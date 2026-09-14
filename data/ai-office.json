@@ -1,0 +1,909 @@
+{
+  "version": 1,
+  "tables": {
+    "organizations": [
+      {
+        "id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "created_at": "2026-09-14T01:10:59.478Z",
+        "updated_at": "2026-09-14T01:10:59.478Z",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "simulation_mode": true,
+        "kill_switch_active": false,
+        "asset_mode": "modern-office-revamped",
+        "currency": "USD",
+        "name": "Pixel Labs",
+        "slug": "pixel-labs-fdad43"
+      }
+    ],
+    "organization_settings": [
+      {
+        "id": "acd9e68a-f981-4107-97ef-a16581c2c37e",
+        "created_at": "2026-09-14T01:10:59.478Z",
+        "updated_at": "2026-09-14T01:10:59.478Z",
+        "max_steps": 60,
+        "max_mission_cost": 5,
+        "max_concurrent_missions": 3,
+        "default_timeout_seconds": 120,
+        "policies": [
+          {
+            "id": "prod-deploy",
+            "rule": "Production deployment requires approval",
+            "enforced": true
+          },
+          {
+            "id": "no-repo-delete",
+            "rule": "Agents cannot delete repositories",
+            "enforced": true
+          },
+          {
+            "id": "external-comm",
+            "rule": "External communication requires approval",
+            "enforced": true
+          }
+        ],
+        "require_approval_for": [
+          "deploy.production",
+          "email.send"
+        ],
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758"
+      }
+    ],
+    "organization_members": [
+      {
+        "id": "39ef4d70-2642-49d7-a07c-3131bf179c8a",
+        "created_at": "2026-09-14T01:10:59.478Z",
+        "updated_at": "2026-09-14T01:10:59.478Z",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "user_id": "00000000-0000-4000-8000-000000000001",
+        "role": "owner"
+      }
+    ],
+    "profiles": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "email": "local@ai-office",
+        "display_name": "Operador local",
+        "created_at": "2026-09-14T01:10:59.478Z",
+        "updated_at": "2026-09-14T01:10:59.478Z"
+      }
+    ],
+    "departments": [
+      {
+        "id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "description": null,
+        "manager_agent_id": null,
+        "sort_order": 0,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "name": "Executive",
+        "slug": "executive",
+        "color": "#e0b35a"
+      },
+      {
+        "id": "e6c8ad75-af5d-4c0a-a824-e57d2253955d",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "description": null,
+        "manager_agent_id": null,
+        "sort_order": 1,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "name": "Engineering",
+        "slug": "engineering",
+        "color": "#5aa9e0"
+      },
+      {
+        "id": "97edd9f1-daba-4610-8f7c-fde36b572a98",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "description": null,
+        "manager_agent_id": null,
+        "sort_order": 2,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "name": "Research",
+        "slug": "research",
+        "color": "#a07ce0"
+      },
+      {
+        "id": "47b2c7af-89a6-49ea-9625-ad4a25534568",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "description": null,
+        "manager_agent_id": null,
+        "sort_order": 3,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "name": "QA",
+        "slug": "qa",
+        "color": "#5ad1a6"
+      },
+      {
+        "id": "e1743e1e-296d-43d6-b405-1a7c4337913f",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "description": null,
+        "manager_agent_id": null,
+        "sort_order": 4,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "name": "Design",
+        "slug": "design",
+        "color": "#e07ca8"
+      },
+      {
+        "id": "fc0ba3c0-ea99-4c9f-8e28-9115137f3bdd",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "description": null,
+        "manager_agent_id": null,
+        "sort_order": 5,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "name": "Product",
+        "slug": "product",
+        "color": "#e08c5a"
+      },
+      {
+        "id": "fe018056-8983-429e-8f9b-0e9a7eb80272",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "description": null,
+        "manager_agent_id": null,
+        "sort_order": 6,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "name": "Security",
+        "slug": "security",
+        "color": "#d95a5a"
+      },
+      {
+        "id": "7ac74ffe-d16d-4dc5-a9f8-cc2b96d7a52f",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "description": null,
+        "manager_agent_id": null,
+        "sort_order": 7,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "name": "Operations",
+        "slug": "operations",
+        "color": "#8a9bb0"
+      }
+    ],
+    "office_maps": [
+      {
+        "id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "width": 44,
+        "height": 30,
+        "tile_size": 16,
+        "layers": {
+          "furniture": [
+            {
+              "kind": "plant",
+              "x": 2,
+              "y": 3
+            },
+            {
+              "kind": "whiteboard",
+              "x": 18,
+              "y": 3
+            },
+            {
+              "kind": "meeting_table",
+              "x": 34,
+              "y": 5
+            },
+            {
+              "kind": "server_rack",
+              "x": 31,
+              "y": 14
+            }
+          ]
+        },
+        "is_default": true,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "name": "Pixel Labs HQ"
+      }
+    ],
+    "office_zones": [
+      {
+        "id": "64642b48-c4c0-4fdc-ad5f-50bcf8e229af",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
+        "properties": {
+          "floor": "tile",
+          "wall": "grey",
+          "door": {
+            "x": 1,
+            "y": 5
+          }
+        },
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "name": "Executive Office",
+        "kind": "executive_office",
+        "x": 1,
+        "y": 1,
+        "width": 10,
+        "height": 8,
+        "color": "#e0b35a"
+      },
+      {
+        "id": "20e475da-e216-405e-9b26-a05a9857bc2b",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "department_id": "e6c8ad75-af5d-4c0a-a824-e57d2253955d",
+        "properties": {
+          "floor": "tile",
+          "wall": "grey",
+          "door": {
+            "x": 12,
+            "y": 7
+          }
+        },
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "name": "Engineering",
+        "kind": "engineering",
+        "x": 12,
+        "y": 1,
+        "width": 16,
+        "height": 12,
+        "color": "#5aa9e0"
+      },
+      {
+        "id": "9abca60d-a1cf-4cc0-80cb-aaf42042e68f",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "department_id": "47b2c7af-89a6-49ea-9625-ad4a25534568",
+        "properties": {
+          "floor": "tile",
+          "wall": "grey",
+          "door": {
+            "x": 12,
+            "y": 18
+          }
+        },
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "name": "QA",
+        "kind": "qa",
+        "x": 12,
+        "y": 14,
+        "width": 8,
+        "height": 8,
+        "color": "#5ad1a6"
+      },
+      {
+        "id": "9ccaf31a-ea30-45dc-a2e5-4cf5314ecb5e",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "department_id": "97edd9f1-daba-4610-8f7c-fde36b572a98",
+        "properties": {
+          "floor": "tile",
+          "wall": "grey",
+          "door": {
+            "x": 21,
+            "y": 18
+          }
+        },
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "name": "Research",
+        "kind": "research",
+        "x": 21,
+        "y": 14,
+        "width": 7,
+        "height": 8,
+        "color": "#a07ce0"
+      },
+      {
+        "id": "0c294e39-c86d-45d7-b256-7af9a5d4846b",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "department_id": null,
+        "properties": {
+          "floor": "tile",
+          "wall": "grey",
+          "door": {
+            "x": 29,
+            "y": 5
+          }
+        },
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "name": "Meeting Room",
+        "kind": "meeting_room",
+        "x": 29,
+        "y": 1,
+        "width": 14,
+        "height": 9,
+        "color": "#8a9bb0"
+      },
+      {
+        "id": "29e696cb-83af-4792-b465-5335dd34a3e1",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "department_id": "fc0ba3c0-ea99-4c9f-8e28-9115137f3bdd",
+        "properties": {
+          "floor": "tile",
+          "wall": "grey",
+          "door": {
+            "x": 29,
+            "y": 24
+          }
+        },
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "name": "Product",
+        "kind": "product",
+        "x": 29,
+        "y": 19,
+        "width": 14,
+        "height": 10,
+        "color": "#e08c5a"
+      },
+      {
+        "id": "11b66adb-be7c-4a3b-8635-c43cb538dab3",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "department_id": null,
+        "properties": {
+          "floor": "tile",
+          "wall": "grey",
+          "door": {
+            "x": 1,
+            "y": 24
+          }
+        },
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "name": "Break Room",
+        "kind": "break_room",
+        "x": 1,
+        "y": 19,
+        "width": 10,
+        "height": 10,
+        "color": "#8a9bb0"
+      }
+    ],
+    "workstations": [
+      {
+        "id": "a953a0f9-71e5-46a8-abbc-f15d63492811",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "assigned_agent_id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
+        "status": "occupied",
+        "desk_kind": "desk",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "zone_id": "64642b48-c4c0-4fdc-ad5f-50bcf8e229af",
+        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
+        "name": "Atlas Desk",
+        "x": 3,
+        "y": 4,
+        "seat_x": 3,
+        "seat_y": 6
+      },
+      {
+        "id": "5ab34cb5-a608-44fb-ab0a-7a14d267a8cb",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "assigned_agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
+        "status": "occupied",
+        "desk_kind": "desk",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "zone_id": "64642b48-c4c0-4fdc-ad5f-50bcf8e229af",
+        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
+        "name": "Nova Desk",
+        "x": 6,
+        "y": 4,
+        "seat_x": 6,
+        "seat_y": 6
+      },
+      {
+        "id": "0354d6c5-3906-488a-8ea1-4f4157ae754c",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "assigned_agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
+        "status": "occupied",
+        "desk_kind": "desk",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "zone_id": "20e475da-e216-405e-9b26-a05a9857bc2b",
+        "department_id": "e6c8ad75-af5d-4c0a-a824-e57d2253955d",
+        "name": "Orion Desk",
+        "x": 20,
+        "y": 4,
+        "seat_x": 20,
+        "seat_y": 6
+      },
+      {
+        "id": "cfbd3cb4-97ae-45bf-965f-945ced808447",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "assigned_agent_id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
+        "status": "occupied",
+        "desk_kind": "desk",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "zone_id": "20e475da-e216-405e-9b26-a05a9857bc2b",
+        "department_id": "e6c8ad75-af5d-4c0a-a824-e57d2253955d",
+        "name": "Claudinho Desk",
+        "x": 14,
+        "y": 4,
+        "seat_x": 14,
+        "seat_y": 6
+      },
+      {
+        "id": "627b9a0a-d4b1-48c4-b49c-4993a33f7960",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "assigned_agent_id": "c37bafb3-1ac1-4275-906e-571992d4384f",
+        "status": "occupied",
+        "desk_kind": "desk",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "zone_id": "9abca60d-a1cf-4cc0-80cb-aaf42042e68f",
+        "department_id": "47b2c7af-89a6-49ea-9625-ad4a25534568",
+        "name": "Sentinel Desk",
+        "x": 17,
+        "y": 17,
+        "seat_x": 17,
+        "seat_y": 19
+      },
+      {
+        "id": "6a295b51-f742-4c52-ba75-a573c3a228fb",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "assigned_agent_id": "459fc31f-cdbe-4f01-95ef-2204611d9a5e",
+        "status": "occupied",
+        "desk_kind": "desk",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "zone_id": "9ccaf31a-ea30-45dc-a2e5-4cf5314ecb5e",
+        "department_id": "97edd9f1-daba-4610-8f7c-fde36b572a98",
+        "name": "Scout Desk",
+        "x": 29,
+        "y": 17,
+        "seat_x": 29,
+        "seat_y": 19
+      }
+    ],
+    "agent_providers": [
+      {
+        "id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "model": "simulated-llm",
+        "health": "CONNECTED",
+        "has_api_key": false,
+        "timeout_ms": 120000,
+        "config": {
+          "note": "Runs entirely on this computer."
+        },
+        "is_enabled": true,
+        "last_health_check_at": null,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "name": "Local Simulation",
+        "type": "simulation"
+      }
+    ],
+    "provider_secrets": [],
+    "agents": [
+      {
+        "id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "manager_agent_id": null,
+        "workstation_id": "a953a0f9-71e5-46a8-abbc-f15d63492811",
+        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
+        "status": "IDLE",
+        "kind": "llm",
+        "model": "simulated-llm",
+        "autonomy_level": 4,
+        "require_approval": false,
+        "is_primary_controller": false,
+        "is_suspended": false,
+        "capabilities": [
+          "delegate_tasks",
+          "approve_tasks",
+          "manage_agents"
+        ],
+        "allowed_tools": [],
+        "external_config": {},
+        "max_concurrent_tasks": 1,
+        "current_task_id": null,
+        "system_prompt": "You are Atlas, CEO.",
+        "description": "CEO do escritório local.",
+        "character_sprite_id": "modern-adam",
+        "max_cost": 2,
+        "max_iterations": 10,
+        "context_limit": 32000,
+        "memory_enabled": true,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
+        "name": "Atlas",
+        "slug": "atlas",
+        "role": "CEO",
+        "color": "#e0b35a"
+      },
+      {
+        "id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "manager_agent_id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
+        "workstation_id": "5ab34cb5-a608-44fb-ab0a-7a14d267a8cb",
+        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
+        "status": "IDLE",
+        "kind": "controller",
+        "model": "simulated-llm",
+        "autonomy_level": 3,
+        "require_approval": false,
+        "is_primary_controller": true,
+        "is_suspended": false,
+        "capabilities": [
+          "delegate_tasks",
+          "approve_tasks",
+          "code_analysis"
+        ],
+        "allowed_tools": [],
+        "external_config": {},
+        "max_concurrent_tasks": 1,
+        "current_task_id": null,
+        "system_prompt": "You are Nova, CTO.",
+        "description": "CTO do escritório local.",
+        "character_sprite_id": "modern-alex",
+        "max_cost": 2,
+        "max_iterations": 10,
+        "context_limit": 32000,
+        "memory_enabled": true,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
+        "name": "Nova",
+        "slug": "nova",
+        "role": "CTO",
+        "color": "#5aa9e0"
+      },
+      {
+        "id": "43aabacd-b3ca-4be1-9953-a4690c422911",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "manager_agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
+        "workstation_id": "0354d6c5-3906-488a-8ea1-4f4157ae754c",
+        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
+        "status": "IDLE",
+        "kind": "llm",
+        "model": "simulated-llm",
+        "autonomy_level": 3,
+        "require_approval": false,
+        "is_primary_controller": false,
+        "is_suspended": false,
+        "capabilities": [
+          "delegate_tasks",
+          "code_analysis",
+          "repository_read"
+        ],
+        "allowed_tools": [],
+        "external_config": {},
+        "max_concurrent_tasks": 1,
+        "current_task_id": null,
+        "system_prompt": "You are Orion, Tech Lead.",
+        "description": "Tech Lead do escritório local.",
+        "character_sprite_id": "modern-amelia",
+        "max_cost": 2,
+        "max_iterations": 10,
+        "context_limit": 32000,
+        "memory_enabled": true,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "department_id": "e6c8ad75-af5d-4c0a-a824-e57d2253955d",
+        "name": "Orion",
+        "slug": "orion",
+        "role": "Tech Lead",
+        "color": "#5ad1e0"
+      },
+      {
+        "id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "manager_agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
+        "workstation_id": "cfbd3cb4-97ae-45bf-965f-945ced808447",
+        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
+        "status": "IDLE",
+        "kind": "llm",
+        "model": "simulated-llm",
+        "autonomy_level": 1,
+        "require_approval": false,
+        "is_primary_controller": false,
+        "is_suspended": false,
+        "capabilities": [
+          "repository_read",
+          "repository_write",
+          "shell",
+          "testing"
+        ],
+        "allowed_tools": [],
+        "external_config": {},
+        "max_concurrent_tasks": 1,
+        "current_task_id": null,
+        "system_prompt": "You are Claudinho, Developer.",
+        "description": "Developer do escritório local.",
+        "character_sprite_id": "modern-bob",
+        "max_cost": 2,
+        "max_iterations": 10,
+        "context_limit": 32000,
+        "memory_enabled": true,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "department_id": "e6c8ad75-af5d-4c0a-a824-e57d2253955d",
+        "name": "Claudinho",
+        "slug": "claudinho",
+        "role": "Developer",
+        "color": "#f2b544"
+      },
+      {
+        "id": "c37bafb3-1ac1-4275-906e-571992d4384f",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "manager_agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
+        "workstation_id": "627b9a0a-d4b1-48c4-b49c-4993a33f7960",
+        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
+        "status": "IDLE",
+        "kind": "llm",
+        "model": "simulated-llm",
+        "autonomy_level": 1,
+        "require_approval": false,
+        "is_primary_controller": false,
+        "is_suspended": false,
+        "capabilities": [
+          "testing",
+          "repository_read"
+        ],
+        "allowed_tools": [],
+        "external_config": {},
+        "max_concurrent_tasks": 1,
+        "current_task_id": null,
+        "system_prompt": "You are Sentinel, QA Engineer.",
+        "description": "QA Engineer do escritório local.",
+        "character_sprite_id": "modern-adam",
+        "max_cost": 2,
+        "max_iterations": 10,
+        "context_limit": 32000,
+        "memory_enabled": true,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "department_id": "47b2c7af-89a6-49ea-9625-ad4a25534568",
+        "name": "Sentinel",
+        "slug": "sentinel",
+        "role": "QA Engineer",
+        "color": "#5ad1a6"
+      },
+      {
+        "id": "459fc31f-cdbe-4f01-95ef-2204611d9a5e",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "manager_agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
+        "workstation_id": "6a295b51-f742-4c52-ba75-a573c3a228fb",
+        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
+        "status": "IDLE",
+        "kind": "llm",
+        "model": "simulated-llm",
+        "autonomy_level": 2,
+        "require_approval": false,
+        "is_primary_controller": false,
+        "is_suspended": false,
+        "capabilities": [
+          "browse_web",
+          "code_analysis"
+        ],
+        "allowed_tools": [],
+        "external_config": {},
+        "max_concurrent_tasks": 1,
+        "current_task_id": null,
+        "system_prompt": "You are Scout, Research Agent.",
+        "description": "Research Agent do escritório local.",
+        "character_sprite_id": "modern-alex",
+        "max_cost": 2,
+        "max_iterations": 10,
+        "context_limit": 32000,
+        "memory_enabled": true,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "department_id": "97edd9f1-daba-4610-8f7c-fde36b572a98",
+        "name": "Scout",
+        "slug": "scout",
+        "role": "Research Agent",
+        "color": "#a07ce0"
+      }
+    ],
+    "agent_permissions": [
+      {
+        "id": "528d42a1-95f3-4bd5-82e1-b81022288dfd",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
+        "permission": "delegate_tasks"
+      },
+      {
+        "id": "1eb593b0-8483-448c-a338-776f3e6c4302",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
+        "permission": "approve_tasks"
+      },
+      {
+        "id": "a1bd546c-0c41-404e-973f-02d199aa3453",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
+        "permission": "manage_agents"
+      },
+      {
+        "id": "b9a37c1d-4be4-4958-b62b-34da4aa414c8",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
+        "permission": "delegate_tasks"
+      },
+      {
+        "id": "a2510fab-ec88-45cd-abfc-8ebd9a087bfb",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
+        "permission": "approve_tasks"
+      },
+      {
+        "id": "5e206764-2e03-49c6-ba96-9c2a41fb0c92",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
+        "permission": "manage_agents"
+      },
+      {
+        "id": "a3d08809-5dce-4734-8682-9ff28cd38668",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
+        "permission": "delegate_tasks"
+      },
+      {
+        "id": "11c1b269-9364-4625-9b95-fb2d182670c1",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
+        "permission": "approve_tasks"
+      },
+      {
+        "id": "510d5c63-227d-4bf5-b46a-66159cdb0de5",
+        "created_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T01:10:59.479Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
+        "permission": "repository.read"
+      },
+      {
+        "id": "fd9a7f63-1d01-445b-93d8-bdb801fe7c6b",
+        "created_at": "2026-09-14T01:10:59.480Z",
+        "updated_at": "2026-09-14T01:10:59.480Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
+        "permission": "repository.read"
+      },
+      {
+        "id": "f4903ba6-0d50-41e3-9bfb-f47e84c35461",
+        "created_at": "2026-09-14T01:10:59.480Z",
+        "updated_at": "2026-09-14T01:10:59.480Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
+        "permission": "repository.write"
+      },
+      {
+        "id": "3238eb9d-9c77-49f0-978e-a6757295e30d",
+        "created_at": "2026-09-14T01:10:59.480Z",
+        "updated_at": "2026-09-14T01:10:59.480Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
+        "permission": "shell.execute"
+      },
+      {
+        "id": "763ab870-8f49-4297-aa9f-800f2d52760f",
+        "created_at": "2026-09-14T01:10:59.480Z",
+        "updated_at": "2026-09-14T01:10:59.480Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
+        "permission": "tests.execute"
+      },
+      {
+        "id": "67024b2e-4c53-4e4a-9809-f523c7c14ad8",
+        "created_at": "2026-09-14T01:10:59.480Z",
+        "updated_at": "2026-09-14T01:10:59.480Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "c37bafb3-1ac1-4275-906e-571992d4384f",
+        "permission": "repository.read"
+      },
+      {
+        "id": "2dd0c009-01fa-4208-9700-b18fa61c4be5",
+        "created_at": "2026-09-14T01:10:59.480Z",
+        "updated_at": "2026-09-14T01:10:59.480Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "c37bafb3-1ac1-4275-906e-571992d4384f",
+        "permission": "tests.execute"
+      },
+      {
+        "id": "e11e1cdf-fbf4-4da4-ab63-0d6d2e9f2135",
+        "created_at": "2026-09-14T01:10:59.480Z",
+        "updated_at": "2026-09-14T01:10:59.480Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "459fc31f-cdbe-4f01-95ef-2204611d9a5e",
+        "permission": "repository.read"
+      },
+      {
+        "id": "5259fa06-cce7-49a4-8aae-3546692ec9e0",
+        "created_at": "2026-09-14T01:10:59.480Z",
+        "updated_at": "2026-09-14T01:10:59.480Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "459fc31f-cdbe-4f01-95ef-2204611d9a5e",
+        "permission": "web.browse"
+      }
+    ],
+    "agent_tools": [],
+    "agent_memories": [],
+    "missions": [],
+    "mission_agents": [],
+    "mission_events": [],
+    "tasks": [],
+    "commands": [],
+    "command_results": [],
+    "agent_messages": [],
+    "agent_runs": [],
+    "approval_requests": [],
+    "mission_permissions": [],
+    "tool_calls": [],
+    "cost_records": [],
+    "meetings": [],
+    "meeting_participants": [],
+    "meeting_messages": [],
+    "audit_logs": [
+      {
+        "id": "58611ab0-d38c-44ad-a7d7-9a4e4fb51ad7",
+        "created_at": "2026-09-14T01:10:59.480Z",
+        "updated_at": "2026-09-14T01:10:59.480Z",
+        "actor_user_id": "00000000-0000-4000-8000-000000000001",
+        "actor_agent_id": null,
+        "input_summary": null,
+        "output_summary": "Pixel Labs",
+        "risk_level": "LOW",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "action": "organization.created"
+      }
+    ]
+  }
+}

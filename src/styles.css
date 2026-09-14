@@ -1,0 +1,258 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * AI Pixel Office — design system
+ * Admin surface: modern, dark, precise SaaS. Office surface: pixel art.
+ * All colors are oklch semantic tokens. Components never hardcode colors.
+ */
+
+@theme inline {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Surfaces */
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-office: var(--office-bg);
+
+  /* Semantic feedback */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-simulation: var(--simulation);
+  --color-simulation-foreground: var(--simulation-foreground);
+
+  /* Agent status palette (shared with the office engine) */
+  --color-status-idle: var(--status-idle);
+  --color-status-walking: var(--status-walking);
+  --color-status-thinking: var(--status-thinking);
+  --color-status-working: var(--status-working);
+  --color-status-waiting: var(--status-waiting);
+  --color-status-delegating: var(--status-delegating);
+  --color-status-reviewing: var(--status-reviewing);
+  --color-status-meeting: var(--status-meeting);
+  --color-status-needs-approval: var(--status-needs-approval);
+  --color-status-error: var(--status-error);
+  --color-status-offline: var(--status-offline);
+  --color-status-paused: var(--status-paused);
+
+  --shadow-glow: 0 0 0 1px oklch(0.82 0.15 80 / 35%), 0 8px 30px -8px oklch(0.82 0.15 80 / 35%);
+  --shadow-panel: 0 1px 0 0 oklch(1 0 0 / 4%) inset, 0 10px 30px -12px oklch(0 0 0 / 60%);
+
+  --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
+  --animate-fade-up: fade-up 0.4s ease-out both;
+  --animate-blink: blink 1s steps(2, start) infinite;
+
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes blink {
+    to {
+      visibility: hidden;
+    }
+  }
+}
+
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.155 0.014 262);
+  --foreground: oklch(0.94 0.01 90);
+  --card: oklch(0.195 0.015 262);
+  --card-foreground: oklch(0.94 0.01 90);
+  --popover: oklch(0.205 0.015 262);
+  --popover-foreground: oklch(0.94 0.01 90);
+  --surface-1: oklch(0.175 0.014 262);
+  --surface-2: oklch(0.225 0.016 262);
+  --office-bg: oklch(0.115 0.012 262);
+
+  --primary: oklch(0.83 0.15 82);
+  --primary-foreground: oklch(0.2 0.04 82);
+  --secondary: oklch(0.26 0.018 262);
+  --secondary-foreground: oklch(0.94 0.01 90);
+  --muted: oklch(0.245 0.016 262);
+  --muted-foreground: oklch(0.68 0.02 262);
+  --accent: oklch(0.285 0.03 255);
+  --accent-foreground: oklch(0.96 0.01 90);
+  --destructive: oklch(0.62 0.2 25);
+  --destructive-foreground: oklch(0.98 0.01 25);
+  --border: oklch(0.29 0.016 262);
+  --input: oklch(0.29 0.016 262);
+  --ring: oklch(0.83 0.15 82);
+
+  --success: oklch(0.76 0.17 152);
+  --success-foreground: oklch(0.18 0.04 152);
+  --warning: oklch(0.8 0.16 70);
+  --warning-foreground: oklch(0.2 0.04 70);
+  --info: oklch(0.72 0.13 235);
+  --info-foreground: oklch(0.16 0.03 235);
+  --simulation: oklch(0.75 0.16 320);
+  --simulation-foreground: oklch(0.17 0.04 320);
+
+  --status-idle: oklch(0.7 0.02 262);
+  --status-walking: oklch(0.78 0.12 210);
+  --status-thinking: oklch(0.72 0.13 235);
+  --status-working: oklch(0.76 0.17 152);
+  --status-waiting: oklch(0.82 0.14 95);
+  --status-delegating: oklch(0.76 0.16 55);
+  --status-reviewing: oklch(0.72 0.16 300);
+  --status-meeting: oklch(0.75 0.13 190);
+  --status-needs-approval: oklch(0.83 0.15 82);
+  --status-error: oklch(0.64 0.21 25);
+  --status-offline: oklch(0.45 0.01 262);
+  --status-paused: oklch(0.6 0.03 262);
+
+  --chart-1: oklch(0.83 0.15 82);
+  --chart-2: oklch(0.72 0.13 235);
+  --chart-3: oklch(0.76 0.17 152);
+  --chart-4: oklch(0.72 0.16 300);
+  --chart-5: oklch(0.64 0.21 25);
+
+  --sidebar: oklch(0.135 0.014 262);
+  --sidebar-foreground: oklch(0.86 0.01 90);
+  --sidebar-primary: oklch(0.83 0.15 82);
+  --sidebar-primary-foreground: oklch(0.2 0.04 82);
+  --sidebar-accent: oklch(0.21 0.016 262);
+  --sidebar-accent-foreground: oklch(0.96 0.01 90);
+  --sidebar-border: oklch(0.23 0.016 262);
+  --sidebar-ring: oklch(0.83 0.15 82);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  ::selection {
+    background: oklch(0.83 0.15 82 / 35%);
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-muted);
+    border-radius: 8px;
+    border: 2px solid var(--color-background);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@utility pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+@utility panel {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+}
+
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+@utility grid-dots {
+  background-image: radial-gradient(oklch(1 0 0 / 5%) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+/* Status dot used across admin surfaces */
+@utility status-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 18%, transparent);
+  background-color: currentColor;
+}
