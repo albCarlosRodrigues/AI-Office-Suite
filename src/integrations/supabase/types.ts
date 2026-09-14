@@ -1376,7 +1376,9 @@ export type Database = {
           goal: string;
           id: string;
           is_simulated: boolean;
+          lease_version: number;
           max_steps: number;
+          mission_contract: Json | null;
           organization_id: string;
           phase: string;
           report: Json | null;
@@ -1407,7 +1409,9 @@ export type Database = {
           goal: string;
           id?: string;
           is_simulated?: boolean;
+          lease_version?: number;
           max_steps?: number;
+          mission_contract?: Json | null;
           organization_id: string;
           phase?: string;
           report?: Json | null;
@@ -1438,7 +1442,9 @@ export type Database = {
           goal?: string;
           id?: string;
           is_simulated?: boolean;
+          lease_version?: number;
           max_steps?: number;
+          mission_contract?: Json | null;
           organization_id?: string;
           phase?: string;
           report?: Json | null;
@@ -1744,6 +1750,7 @@ export type Database = {
           organization_id: string;
           provider_id: string;
           secret_headers: Json;
+          secret_ref: string | null;
           updated_at: string;
         };
         Insert: {
@@ -1752,6 +1759,7 @@ export type Database = {
           organization_id: string;
           provider_id: string;
           secret_headers?: Json;
+          secret_ref?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -1760,6 +1768,7 @@ export type Database = {
           organization_id?: string;
           provider_id?: string;
           secret_headers?: Json;
+          secret_ref?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -1803,6 +1812,7 @@ export type Database = {
           retries: number;
           started_at: string | null;
           status: Database["public"]["Enums"]["task_status"];
+          task_contract: Json | null;
           title: string;
           tokens_in: number;
           tokens_out: number;
@@ -1831,6 +1841,7 @@ export type Database = {
           retries?: number;
           started_at?: string | null;
           status?: Database["public"]["Enums"]["task_status"];
+          task_contract?: Json | null;
           title: string;
           tokens_in?: number;
           tokens_out?: number;
@@ -1859,6 +1870,7 @@ export type Database = {
           retries?: number;
           started_at?: string | null;
           status?: Database["public"]["Enums"]["task_status"];
+          task_contract?: Json | null;
           title?: string;
           tokens_in?: number;
           tokens_out?: number;
@@ -2105,10 +2117,10 @@ export type Database = {
     Functions: {
       claim_mission_step: {
         Args: { p_lease_seconds?: number; p_mission_id: string; p_worker_id: string };
-        Returns: Database["public"]["Tables"]["missions"]["Row"];
+        Returns: Json;
       };
       release_mission_step: {
-        Args: { p_mission_id: string; p_worker_id: string };
+        Args: { p_mission_id: string; p_worker_id: string; p_lease_version?: number };
         Returns: boolean;
       };
       create_organization: {
@@ -2161,6 +2173,11 @@ export type Database = {
         | "FAILED"
         | "STOPPED";
       provider_health:
+        | "INVALID_KEY"
+        | "MODEL_UNAVAILABLE"
+        | "RATE_LIMITED"
+        | "DISCONNECTED"
+        | "AUTH_REQUIRED"
         | "UNKNOWN"
         | "CONNECTED"
         | "DEGRADED"
@@ -2346,6 +2363,11 @@ export const Constants = {
         "STOPPED",
       ],
       provider_health: [
+        "INVALID_KEY",
+        "MODEL_UNAVAILABLE",
+        "RATE_LIMITED",
+        "DISCONNECTED",
+        "AUTH_REQUIRED",
         "UNKNOWN",
         "CONNECTED",
         "DEGRADED",

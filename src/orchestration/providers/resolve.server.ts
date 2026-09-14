@@ -4,6 +4,9 @@ import { SimulationProvider } from "./SimulationProvider";
 import { OpenAiCompatProvider } from "./OpenAiCompatProvider.server";
 import { ExternalAgentProvider } from "./ExternalAgentProvider.server";
 import { UnavailableProvider } from "./UnavailableProvider.server";
+import { PrxChatBackend } from "@/integrations/prx/session";
+import { CdpPrxSessionClient } from "@/integrations/prx/cdp-session.server";
+import { FreeClaudeBackend } from "@/integrations/free-claude/backend";
 
 export interface ProviderSecrets {
   api_key: string | null;
@@ -47,6 +50,58 @@ export function resolveProvider(
     ...((row.headers ?? {}) as Record<string, string>),
     ...(secrets?.secret_headers ?? {}),
   };
+  if (cfg["backend"] === "prx-localant" || cfg["backend"] === "free-claude") {
+    const backend =
+      cfg["backend"] === "prx-localant"
+        ? new PrxChatBackend(
+            new CdpPrxSessionClient(
+              row.base_url ?? "http://127.0.0.1:9223",
+              String(cfg["sessionId"] ?? ""),
+              String(cfg["composerLabel"] ?? ""),
+            ),
+            {
+              sessionId: String(cfg["sessionId"] ?? ""),
+              conversationId: String(cfg["conversationId"] ?? ""),
+              agentId: agent.id ?? "health",
+              timeoutMs: row.timeout_ms,
+            },
+          )
+        : new FreeClaudeBackend({
+            apiKey: secrets?.api_key ?? null,
+            model: agent.model || row.model || "",
+            baseUrl: row.base_url || BASE_URLS["openrouter"]!,
+            temperature: Number(row.temperature),
+            maxOutputTokens: row.max_tokens,
+            timeoutMs: row.timeout_ms,
+          });
+    return new OpenAiCompatProvider({
+      type: row.type,
+      baseUrl: "",
+      apiKey: null,
+      model: agent.model || row.model || backend.id,
+      temperature: Number(row.temperature),
+      maxTokens: row.max_tokens,
+      timeoutMs: row.timeout_ms,
+      headers: {},
+      transport: async (system, user, json, signal, context) => {
+        const started = Date.now();
+        const result = await backend.execute(
+          { taskId: "provider-call", ...context, payload: { system, user, json } },
+          signal,
+        );
+        return {
+          text: String(result.result),
+          usage: {
+            tokensIn: Math.ceil((system.length + user.length) / 4),
+            tokensOut: Math.ceil(String(result.result).length / 4),
+            latencyMs: Date.now() - started,
+            model: agent.model || row.model || backend.id,
+            simulated: false,
+          },
+        };
+      },
+    });
+  }
   if (row.type === "custom" || agent.kind === "external") {
     return new ExternalAgentProvider({
       baseUrl: row.base_url,

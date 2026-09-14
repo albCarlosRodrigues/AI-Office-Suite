@@ -11,6 +11,34 @@ export interface BuiltContext {
   systemPrompt: string;
   scope: Record<string, unknown>;
 }
+export interface DependencyContextInput {
+  code: string;
+  title: string;
+  result: string | null;
+  artifactRefs?: string[];
+  evidenceRefs?: string[];
+  contextRefs?: string[];
+}
+
+export function selectDependencyContext(
+  dependencies: readonly DependencyContextInput[],
+  maxInlineResultBytes = 2_048,
+) {
+  return dependencies.map((dependency) => {
+    const result = dependency.result ?? "";
+    const bytes = new TextEncoder().encode(result).byteLength;
+    return {
+      from: dependency.code,
+      title: dependency.title,
+      artifactRefs: dependency.artifactRefs ?? [],
+      evidenceRefs: dependency.evidenceRefs ?? [],
+      contextRefs: dependency.contextRefs ?? [],
+      ...(bytes <= maxInlineResultBytes
+        ? { inlineResult: result }
+        : { inlineResult: null, omittedBytes: bytes, requiresArtifactFetch: true }),
+    };
+  });
+}
 
 export function buildAgentSystemPrompt(
   agent: Agent,
@@ -48,7 +76,7 @@ export function buildCommandContext(args: {
   missionTitle: string;
   goal: string;
   task: { code: string; title: string; description: string };
-  dependencyResults: { code: string; title: string; result: string | null }[];
+  dependencyResults: DependencyContextInput[];
   department: Department | null;
   constraints: Record<string, unknown>;
   permissions: string[];
@@ -56,11 +84,7 @@ export function buildCommandContext(args: {
   return {
     mission: { title: args.missionTitle, goal: args.goal },
     task: args.task,
-    inputs: args.dependencyResults.map((d) => ({
-      from: d.code,
-      title: d.title,
-      result: (d.result ?? "").slice(0, 1500),
-    })),
+    inputs: selectDependencyContext(args.dependencyResults),
     department: args.department
       ? { name: args.department.name, context: args.department.context }
       : null,

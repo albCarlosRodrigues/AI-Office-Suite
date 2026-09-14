@@ -73,6 +73,7 @@ class AgentActor {
   bubble: Phaser.GameObjects.Text;
   speech: Phaser.GameObjects.Text;
   ring: Phaser.GameObjects.Graphics;
+  route: Phaser.GameObjects.Graphics;
   tile: Point;
   path: Point[] = [];
   facing: Direction = "down";
@@ -85,6 +86,7 @@ class AgentActor {
   speechUntil = 0;
   bob = Math.random() * Math.PI * 2;
   seated = false;
+  isReporting = false;
 
   constructor(
     public scene: OfficeScene,
@@ -99,6 +101,7 @@ class AgentActor {
     const px = tile.x * TILE + TILE / 2;
     const py = tile.y * TILE + TILE;
     this.ring = scene.add.graphics();
+    this.route = scene.add.graphics().setDepth(9000);
     this.sprite = scene.add.sprite(px, py, `${key}-idle`, IDLE_FRAME.down).setOrigin(0.5, 1);
     this.sprite.setInteractive({ useHandCursor: true });
     this.sprite.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
@@ -183,7 +186,27 @@ class AgentActor {
     } else {
       this.path = path;
     }
-    if (this.path.length) this.seated = false;
+    if (this.path.length) {
+      this.seated = false;
+      this.drawRoute([this.tile, ...this.path]);
+    }
+  }
+
+  private drawRoute(points: Point[]) {
+    this.route.clear().setAlpha(1);
+    this.route.lineStyle(2, 0x6fc3e0, 0.82);
+    this.route.beginPath();
+    points.forEach((point, index) => {
+      const x = point.x * TILE + TILE / 2;
+      const y = point.y * TILE + TILE / 2;
+      if (index === 0) this.route.moveTo(x, y);
+      else this.route.lineTo(x, y);
+    });
+    this.route.strokePath();
+    for (const point of points)
+      this.route
+        .fillStyle(0xf2c14e, 0.9)
+        .fillCircle(point.x * TILE + TILE / 2, point.y * TILE + TILE / 2, 1.5);
   }
 
   update(time: number, delta: number) {
@@ -250,6 +273,22 @@ class AgentActor {
   }
 
   onArrive() {
+    this.scene.tweens.add({
+      targets: this.route,
+      alpha: 0,
+      duration: 1800,
+      onComplete: () => this.route.clear().setAlpha(1),
+    });
+    if (this.isReporting && (this.tile.x !== this.home.x || this.tile.y !== this.home.y)) {
+      this.say("Entrega concluída ao superior.", 2600);
+      this.scene.time.delayedCall(1400, () => {
+        this.isReporting = false;
+        this.status = this.agent.status;
+        this.applyStatusVisual();
+        this.moveTo(this.home);
+      });
+      return;
+    }
     if (
       this.meetingSeat &&
       this.tile.x === this.meetingSeat.x &&
@@ -269,6 +308,7 @@ class AgentActor {
     this.bubble.destroy();
     this.speech.destroy();
     this.ring.destroy();
+    this.route.destroy();
   }
 }
 
@@ -507,7 +547,8 @@ export class OfficeScene extends Phaser.Scene {
           actor.homeFacing = seat.facing;
           if (agent.status !== "MEETING") actor.moveTo(home);
         }
-        if (previousStatus !== agent.status) this.applyStatus(actor, agent.status, false);
+        if (!actor.isReporting && previousStatus !== agent.status)
+          this.applyStatus(actor, agent.status, false);
         else actor.applyStatusVisual();
       }
     });
@@ -586,6 +627,28 @@ export class OfficeScene extends Phaser.Scene {
     this.actors.get(agentId)?.say(value);
   }
 
+  reportToManager(agentId: string, managerId?: string | null, message?: string) {
+    const actor = this.actors.get(agentId);
+    const manager = this.actors.get(managerId ?? actor?.agent.manager_agent_id ?? "");
+    if (!actor || !manager || actor === manager) return;
+    const approaches = [
+      { x: manager.tile.x - 1, y: manager.tile.y },
+      { x: manager.tile.x + 1, y: manager.tile.y },
+      { x: manager.tile.x, y: manager.tile.y - 1 },
+      { x: manager.tile.x, y: manager.tile.y + 1 },
+    ];
+    const target = approaches.find(
+      (point) =>
+        !this.grid.isBlocked(point.x, point.y) && this.grid.findPath(actor.tile, point).length,
+    );
+    if (!target) return;
+    actor.isReporting = true;
+    actor.status = "WALKING";
+    actor.applyStatusVisual();
+    actor.say(message ?? `Entregando resultado a ${manager.agent.name}.`, 5000);
+    actor.moveTo(target);
+  }
+
   selectAgent(id: string | null) {
     for (const actor of this.actors.values()) actor.setSelected(false);
     this.selectedAgentId = id;
@@ -599,7 +662,10 @@ export class OfficeScene extends Phaser.Scene {
     this.killOverlay?.setVisible(active);
     for (const actor of this.actors.values()) {
       actor.applyStatusVisual();
-      if (active) actor.path = [];
+      if (active) {
+        actor.path = [];
+        actor.route.clear();
+      }
     }
   }
 

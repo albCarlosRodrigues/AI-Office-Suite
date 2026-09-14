@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { bindAcmeIntegrations } from "./integration-bindings";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { createLocalClient } from "./client";
@@ -45,7 +46,7 @@ const TABLES = [
 ] as const;
 
 type Row = Record<string, unknown>;
-type Store = { version: 1; tables: Record<string, Row[]> };
+type Store = { version: 2; tables: Record<string, Row[]> };
 const dataFile =
   process.env["AI_OFFICE_DATA_FILE"] ?? path.join(process.cwd(), "data", "ai-office.json");
 let queue = Promise.resolve();
@@ -54,7 +55,7 @@ const id = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
 function emptyStore(): Store {
-  return { version: 1, tables: Object.fromEntries(TABLES.map((table) => [table, []])) };
+  return { version: 2, tables: Object.fromEntries(TABLES.map((table) => [table, []])) };
 }
 
 async function loadStore(): Promise<Store> {
@@ -89,7 +90,7 @@ async function loadStore(): Promise<Store> {
     };
     const objectFields: Record<string, string[]> = {
       agents: ["external_config"],
-      commands: ["context", "expected_output"],
+      commands: ["context"],
       approval_requests: ["requested_action"],
       workstations: ["properties"],
       agent_tools: ["config"],
@@ -119,8 +120,29 @@ async function loadStore(): Promise<Store> {
       agent["context_limit"] ??= 32000;
       agent["memory_enabled"] ??= true;
     }
+    let migrated = bindAcmeIntegrations(parsed.tables);
+    const shouldSeedEmptyLegacyOrganizations = Number(parsed.version ?? 1) < 2;
+    if (shouldSeedEmptyLegacyOrganizations) {
+      parsed.version = 2;
+      migrated = true;
+    }
     for (const organization of parsed.tables["organizations"] ?? []) {
       organization["asset_mode"] = "ai-office-default";
+      const organizationId = organization["id"] as string;
+      const hasAgents = (parsed.tables["agents"] ?? []).some(
+        (agent) => agent["organization_id"] === organizationId,
+      );
+      if (shouldSeedEmptyLegacyOrganizations && !hasAgents) {
+        seedDefaultAgents(parsed, organizationId);
+        parsed.tables["audit_logs"]!.push(
+          defaults("audit_logs", {
+            organization_id: organizationId,
+            action: "agents.default_seeded",
+            output_summary: "Codex -> GPT -> Claudinho",
+          }),
+        );
+        migrated = true;
+      }
     }
     for (const permission of parsed.tables["agent_permissions"] ?? []) {
       permission["granted"] ??= true;
@@ -143,6 +165,7 @@ async function loadStore(): Promise<Store> {
       task["max_retries"] ??= Number(task["max_attempts"] ?? 2);
       task["result"] ??= task["output"] ?? null;
     }
+    if (migrated) await saveStore(parsed);
     return parsed;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
@@ -470,137 +493,7 @@ function seedOrganization(store: Store, name: string, withAgents: boolean): stri
   });
   store.tables["agent_providers"]!.push(simulationProvider);
 
-  if (withAgents) {
-    const agentSpecs = [
-      {
-        name: "Atlas",
-        slug: "atlas",
-        role: "CEO",
-        department: "executive",
-        manager: null,
-        kind: "llm",
-        autonomy: 4,
-        color: "#e0b35a",
-        capabilities: ["delegate_tasks", "approve_tasks", "manage_agents"],
-      },
-      {
-        name: "Nova",
-        slug: "nova",
-        role: "CTO",
-        department: "executive",
-        manager: "atlas",
-        kind: "controller",
-        autonomy: 3,
-        color: "#5aa9e0",
-        capabilities: ["delegate_tasks", "approve_tasks", "code_analysis"],
-      },
-      {
-        name: "Orion",
-        slug: "orion",
-        role: "Tech Lead",
-        department: "engineering",
-        manager: "nova",
-        kind: "llm",
-        autonomy: 3,
-        color: "#5ad1e0",
-        capabilities: ["delegate_tasks", "code_analysis", "repository_read"],
-      },
-      {
-        name: "Claudinho",
-        slug: "claudinho",
-        role: "Developer",
-        department: "engineering",
-        manager: "orion",
-        kind: "llm",
-        autonomy: 1,
-        color: "#f2b544",
-        capabilities: ["repository_read", "repository_write", "shell", "testing"],
-      },
-      {
-        name: "Sentinel",
-        slug: "sentinel",
-        role: "QA Engineer",
-        department: "qa",
-        manager: "orion",
-        kind: "llm",
-        autonomy: 1,
-        color: "#5ad1a6",
-        capabilities: ["testing", "repository_read"],
-      },
-      {
-        name: "Scout",
-        slug: "scout",
-        role: "Research Agent",
-        department: "research",
-        manager: "nova",
-        kind: "llm",
-        autonomy: 2,
-        color: "#a07ce0",
-        capabilities: ["browse_web", "code_analysis"],
-      },
-    ];
-    const modernCharacters = ["modern-adam", "modern-alex", "modern-amelia", "modern-bob"];
-    const agents = agentSpecs.map((spec, index) =>
-      defaults("agents", {
-        organization_id: orgId,
-        department_id: departmentId(spec.department),
-        provider_id: simulationProvider["id"],
-        name: spec.name,
-        slug: spec.slug,
-        role: spec.role,
-        kind: spec.kind,
-        autonomy_level: spec.autonomy,
-        color: spec.color,
-        character_sprite_id: modernCharacters[index % modernCharacters.length],
-        capabilities: spec.capabilities,
-        is_primary_controller: spec.slug === "nova",
-        description: `${spec.role} do escritório local.`,
-        system_prompt: `You are ${spec.name}, ${spec.role}.`,
-      }),
-    );
-    for (let index = 0; index < agents.length; index++) {
-      const spec = agentSpecs[index]!;
-      const agent = agents[index]!;
-      agent["manager_agent_id"] = spec.manager
-        ? agents.find((row) => row["slug"] === spec.manager)!["id"]
-        : null;
-      const zone =
-        zones.find((row) => row["department_id"] === agent["department_id"]) ?? zones[0]!;
-      const workstation = defaults("workstations", {
-        organization_id: orgId,
-        office_map_id: mapId,
-        zone_id: zone["id"],
-        department_id: agent["department_id"],
-        assigned_agent_id: agent["id"],
-        status: "occupied",
-        name: `${spec.name} Desk`,
-        x: (zone["x"] as number) + 2 + (index % 3) * 3,
-        y: (zone["y"] as number) + 3,
-        seat_x: (zone["x"] as number) + 2 + (index % 3) * 3,
-        seat_y: (zone["y"] as number) + 5,
-      });
-      agent["workstation_id"] = workstation["id"];
-      store.tables["workstations"]!.push(workstation);
-    }
-    store.tables["agents"]!.push(...agents);
-    const permissions: Record<string, string[]> = {
-      atlas: ["delegate_tasks", "approve_tasks", "manage_agents"],
-      nova: ["delegate_tasks", "approve_tasks", "manage_agents"],
-      orion: ["delegate_tasks", "approve_tasks", "repository.read"],
-      claudinho: ["repository.read", "repository.write", "shell.execute", "tests.execute"],
-      sentinel: ["repository.read", "tests.execute"],
-      scout: ["repository.read", "web.browse"],
-    };
-    for (const agent of agents)
-      for (const permission of permissions[agent["slug"] as string] ?? [])
-        store.tables["agent_permissions"]!.push(
-          defaults("agent_permissions", {
-            organization_id: orgId,
-            agent_id: agent["id"],
-            permission,
-          }),
-        );
-  }
+  if (withAgents) seedDefaultAgents(store, orgId);
   store.tables["audit_logs"]!.push(
     defaults("audit_logs", {
       organization_id: orgId,
@@ -609,6 +502,195 @@ function seedOrganization(store: Store, name: string, withAgents: boolean): stri
     }),
   );
   return orgId;
+}
+
+function seedDefaultAgents(store: Store, orgId: string): void {
+  const organizationDepartments = store.tables["departments"]!.filter(
+    (row) => row["organization_id"] === orgId,
+  );
+  const ensureDepartment = (name: string, slug: string, color: string) => {
+    const existing = organizationDepartments.find((row) => row["slug"] === slug);
+    if (existing) return existing;
+    const department = defaults("departments", {
+      organization_id: orgId,
+      name,
+      slug,
+      color,
+      sort_order: organizationDepartments.length,
+    });
+    organizationDepartments.push(department);
+    store.tables["departments"]!.push(department);
+    return department;
+  };
+  const executive = ensureDepartment("Executive", "executive", "#e0b35a");
+  const engineering = ensureDepartment("Engineering", "engineering", "#5aa9e0");
+  const departmentBySlug = (slug: string) =>
+    (slug === "engineering" ? engineering : executive)["id"] as string;
+
+  let officeMap = store.tables["office_maps"]!.find(
+    (row) => row["organization_id"] === orgId && row["is_default"] === true,
+  );
+  officeMap ??= store.tables["office_maps"]!.find((row) => row["organization_id"] === orgId);
+  if (!officeMap) {
+    officeMap = defaults("office_maps", {
+      organization_id: orgId,
+      name: "AI Office HQ",
+      layers: { furniture: [] },
+    });
+    store.tables["office_maps"]!.push(officeMap);
+  }
+
+  const organizationZones = store.tables["office_zones"]!.filter(
+    (row) => row["organization_id"] === orgId && row["office_map_id"] === officeMap!["id"],
+  );
+  const ensureZone = (name: string, kind: string, departmentId: string, x: number, y: number) => {
+    const existing = organizationZones.find((row) => row["department_id"] === departmentId);
+    if (existing) return existing;
+    const zone = defaults("office_zones", {
+      organization_id: orgId,
+      office_map_id: officeMap!["id"],
+      department_id: departmentId,
+      name,
+      kind,
+      x,
+      y,
+      width: 10,
+      height: 8,
+      color: kind === "engineering" ? "#5aa9e0" : "#e0b35a",
+      properties: { floor: "tile", wall: "grey", door: { x, y: y + 4 } },
+    });
+    organizationZones.push(zone);
+    store.tables["office_zones"]!.push(zone);
+    return zone;
+  };
+  ensureZone("Executive Office", "executive_office", executive["id"] as string, 1, 1);
+  ensureZone("Engineering", "engineering", engineering["id"] as string, 12, 1);
+
+  let simulationProvider = store.tables["agent_providers"]!.find(
+    (row) => row["organization_id"] === orgId && row["type"] === "simulation",
+  );
+  if (!simulationProvider) {
+    simulationProvider = defaults("agent_providers", {
+      organization_id: orgId,
+      name: "Local Simulation",
+      type: "simulation",
+      config: { note: "Runs entirely on this computer." },
+    });
+    store.tables["agent_providers"]!.push(simulationProvider);
+  }
+
+  const agentSpecs = [
+    {
+      name: "Codex",
+      slug: "codex",
+      role: "Leader / CEO / Orchestrator",
+      department: "executive",
+      manager: null,
+      kind: "controller",
+      autonomy: 4,
+      color: "#e0b35a",
+      model: "codex-leader",
+      primary: true,
+      description: "Líder global: cria missões, decide, delega e aceita o resultado consolidado.",
+      capabilities: ["delegate_tasks", "approve_tasks", "manage_agents", "final_review"],
+      allowedTools: ["repository_read"],
+      externalConfig: { mode: "orchestrator", role: "leader" },
+    },
+    {
+      name: "GPT",
+      slug: "gpt",
+      role: "Manager",
+      department: "executive",
+      manager: "codex",
+      kind: "llm",
+      autonomy: 3,
+      color: "#5aa9e0",
+      model: "chatgpt-session",
+      primary: false,
+      description: "Gerente inspirado no LocalAnt: decompõe, supervisiona, revisa e consolida.",
+      capabilities: ["delegate_tasks", "approve_tasks", "code_analysis", "review"],
+      allowedTools: ["repository_read", "testing"],
+      externalConfig: { mode: "chatgpt-session", protocol: "mcp-style", apiRequired: false },
+    },
+    {
+      name: "Claudinho",
+      slug: "claudinho",
+      role: "Worker / Executor",
+      department: "engineering",
+      manager: "gpt",
+      kind: "external",
+      autonomy: 1,
+      color: "#f2b544",
+      model: "free-claude-worker",
+      primary: false,
+      description: "Executor operacional econômico inspirado no free-claude.",
+      capabilities: ["repository_read", "repository_write", "shell", "testing"],
+      allowedTools: ["repository_read", "repository_write", "shell", "testing"],
+      externalConfig: { mode: "free-claude", protocol: "command", costClass: "cheap" },
+    },
+  ];
+  const modernCharacters = ["modern-adam", "modern-alex", "modern-amelia", "modern-bob"];
+  const agents = agentSpecs.map((spec, index) =>
+    defaults("agents", {
+      organization_id: orgId,
+      department_id: departmentBySlug(spec.department),
+      provider_id: simulationProvider["id"],
+      name: spec.name,
+      slug: spec.slug,
+      role: spec.role,
+      kind: spec.kind,
+      model: spec.model,
+      autonomy_level: spec.autonomy,
+      color: spec.color,
+      character_sprite_id: modernCharacters[index % modernCharacters.length],
+      capabilities: spec.capabilities,
+      allowed_tools: spec.allowedTools,
+      external_config: spec.externalConfig,
+      is_primary_controller: spec.primary,
+      description: spec.description,
+      system_prompt: `You are ${spec.name}, ${spec.role}.`,
+    }),
+  );
+  for (let index = 0; index < agents.length; index++) {
+    const spec = agentSpecs[index]!;
+    const agent = agents[index]!;
+    agent["manager_agent_id"] = spec.manager
+      ? agents.find((row) => row["slug"] === spec.manager)!["id"]
+      : null;
+    const zone =
+      organizationZones.find((row) => row["department_id"] === agent["department_id"]) ??
+      organizationZones[0]!;
+    const workstation = defaults("workstations", {
+      organization_id: orgId,
+      office_map_id: officeMap["id"],
+      zone_id: zone["id"],
+      department_id: agent["department_id"],
+      assigned_agent_id: agent["id"],
+      status: "occupied",
+      name: `${spec.name} Desk`,
+      x: (zone["x"] as number) + 2 + (index % 3) * 3,
+      y: (zone["y"] as number) + 3,
+      seat_x: (zone["x"] as number) + 2 + (index % 3) * 3,
+      seat_y: (zone["y"] as number) + 5,
+    });
+    agent["workstation_id"] = workstation["id"];
+    store.tables["workstations"]!.push(workstation);
+  }
+  store.tables["agents"]!.push(...agents);
+  const permissions: Record<string, string[]> = {
+    codex: ["delegate_tasks", "approve_tasks", "manage_agents", "repository.read"],
+    gpt: ["delegate_tasks", "approve_tasks", "repository.read", "tests.execute"],
+    claudinho: ["repository.read", "repository.write", "shell.execute", "tests.execute"],
+  };
+  for (const agent of agents)
+    for (const permission of permissions[agent["slug"] as string] ?? [])
+      store.tables["agent_permissions"]!.push(
+        defaults("agent_permissions", {
+          organization_id: orgId,
+          agent_id: agent["id"],
+          permission,
+        }),
+      );
 }
 
 function matches(row: Row, filter: LocalFilter): boolean {
@@ -741,19 +823,38 @@ async function executeRpc(
   if (rpc.name === "has_org_role") return { result: { data: true, error: null }, changed: false };
   if (rpc.name === "claim_mission_step") {
     const mission = store.tables["missions"]!.find((row) => row["id"] === args["p_mission_id"]);
-    if (!mission) return { result: { data: false, error: null }, changed: false };
+    if (!mission) return { result: { data: null, error: null }, changed: false };
+    if (Number(mission["current_step"] ?? 0) >= Number(mission["max_steps"] ?? 0))
+      return { result: { data: null, error: null }, changed: false };
     const expires = String(mission["step_locked_until"] ?? "");
     if (mission["step_lock_id"] && expires > now())
-      return { result: { data: false, error: null }, changed: false };
-    mission["step_lock_id"] = args["p_worker_id"];
-    mission["step_locked_until"] = new Date(
-      Date.now() + Number(args["p_lease_seconds"] ?? 180) * 1000,
-    ).toISOString();
-    return { result: { data: true, error: null }, changed: true };
+      return { result: { data: null, error: null }, changed: false };
+    const leaseId = String(args["p_worker_id"]);
+    const leaseVersion = Number(mission["lease_version"] ?? 0) + 1;
+    const leaseSeconds = Math.max(30, Math.min(Number(args["p_lease_seconds"] ?? 180), 600));
+    mission["current_step"] = Number(mission["current_step"] ?? 0) + 1;
+    mission["lease_version"] = leaseVersion;
+    mission["step_lock_id"] = leaseId;
+    mission["step_locked_until"] = new Date(Date.now() + leaseSeconds * 1000).toISOString();
+    return {
+      result: {
+        data: {
+          mission: structuredClone(mission),
+          leaseId,
+          leaseVersion,
+          expiresAt: mission["step_locked_until"],
+        },
+        error: null,
+      },
+      changed: true,
+    };
   }
   if (rpc.name === "release_mission_step") {
     const mission = store.tables["missions"]!.find(
-      (row) => row["id"] === args["p_mission_id"] && row["step_lock_id"] === args["p_worker_id"],
+      (row) =>
+        row["id"] === args["p_mission_id"] &&
+        row["step_lock_id"] === args["p_worker_id"] &&
+        (args["p_lease_version"] == null || row["lease_version"] === args["p_lease_version"]),
     );
     if (mission) {
       mission["step_lock_id"] = null;

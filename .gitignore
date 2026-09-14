@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+/.validation/
 dist
 dist-ssr
 .output
@@ -15,6 +16,9 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+.env
+.env.*
+!.env.example
 
 # Wrangler / Cloudflare
 .wrangler/
@@ -33,3 +37,7 @@ dist-ssr
 
 # Electron build output
 release/
+coverage/
+data/ai-office-runtime.json*
+data/ai-office-metrics.jsonl
+data/artifacts/

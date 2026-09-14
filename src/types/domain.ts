@@ -123,6 +123,7 @@ export interface Evidence {
 
 export type WorkerResponseStatus =
   | "COMPLETED"
+  | "CANCELLED"
   | "FAILED"
   | "BLOCKED"
   | "NEEDS_CLARIFICATION"

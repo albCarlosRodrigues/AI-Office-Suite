@@ -9,7 +9,7 @@
         "owner_id": "00000000-0000-4000-8000-000000000001",
         "simulation_mode": true,
         "kill_switch_active": false,
-        "asset_mode": "modern-office-revamped",
+        "asset_mode": "ai-office-default",
         "currency": "USD",
         "name": "Pixel Labs",
         "slug": "pixel-labs-fdad43"
@@ -382,7 +382,8 @@
         "x": 3,
         "y": 4,
         "seat_x": 3,
-        "seat_y": 6
+        "seat_y": 6,
+        "properties": {}
       },
       {
         "id": "5ab34cb5-a608-44fb-ab0a-7a14d267a8cb",
@@ -400,7 +401,8 @@
         "x": 6,
         "y": 4,
         "seat_x": 6,
-        "seat_y": 6
+        "seat_y": 6,
+        "properties": {}
       },
       {
         "id": "0354d6c5-3906-488a-8ea1-4f4157ae754c",
@@ -418,7 +420,8 @@
         "x": 20,
         "y": 4,
         "seat_x": 20,
-        "seat_y": 6
+        "seat_y": 6,
+        "properties": {}
       },
       {
         "id": "cfbd3cb4-97ae-45bf-965f-945ced808447",
@@ -436,7 +439,8 @@
         "x": 14,
         "y": 4,
         "seat_x": 14,
-        "seat_y": 6
+        "seat_y": 6,
+        "properties": {}
       },
       {
         "id": "627b9a0a-d4b1-48c4-b49c-4993a33f7960",
@@ -454,7 +458,8 @@
         "x": 17,
         "y": 17,
         "seat_x": 17,
-        "seat_y": 19
+        "seat_y": 19,
+        "properties": {}
       },
       {
         "id": "6a295b51-f742-4c52-ba75-a573c3a228fb",
@@ -472,252 +477,31 @@
         "x": 29,
         "y": 17,
         "seat_x": 29,
-        "seat_y": 19
+        "seat_y": 19,
+        "properties": {}
       }
     ],
     "agent_providers": [
       {
         "id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
         "created_at": "2026-09-14T01:10:59.479Z",
-        "updated_at": "2026-09-14T01:10:59.479Z",
+        "updated_at": "2026-09-14T05:07:41.953Z",
         "model": "simulated-llm",
-        "health": "CONNECTED",
+        "health": "UNCONFIGURED",
         "has_api_key": false,
         "timeout_ms": 120000,
         "config": {
           "note": "Runs entirely on this computer."
         },
         "is_enabled": true,
-        "last_health_check_at": null,
+        "last_health_check_at": "2026-09-14T05:07:41.952Z",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "name": "Local Simulation",
         "type": "simulation"
       }
     ],
     "provider_secrets": [],
-    "agents": [
-      {
-        "id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
-        "created_at": "2026-09-14T01:10:59.479Z",
-        "updated_at": "2026-09-14T01:10:59.479Z",
-        "manager_agent_id": null,
-        "workstation_id": "a953a0f9-71e5-46a8-abbc-f15d63492811",
-        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
-        "status": "IDLE",
-        "kind": "llm",
-        "model": "simulated-llm",
-        "autonomy_level": 4,
-        "require_approval": false,
-        "is_primary_controller": false,
-        "is_suspended": false,
-        "capabilities": [
-          "delegate_tasks",
-          "approve_tasks",
-          "manage_agents"
-        ],
-        "allowed_tools": [],
-        "external_config": {},
-        "max_concurrent_tasks": 1,
-        "current_task_id": null,
-        "system_prompt": "You are Atlas, CEO.",
-        "description": "CEO do escritório local.",
-        "character_sprite_id": "modern-adam",
-        "max_cost": 2,
-        "max_iterations": 10,
-        "context_limit": 32000,
-        "memory_enabled": true,
-        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
-        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
-        "name": "Atlas",
-        "slug": "atlas",
-        "role": "CEO",
-        "color": "#e0b35a"
-      },
-      {
-        "id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
-        "created_at": "2026-09-14T01:10:59.479Z",
-        "updated_at": "2026-09-14T01:10:59.479Z",
-        "manager_agent_id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
-        "workstation_id": "5ab34cb5-a608-44fb-ab0a-7a14d267a8cb",
-        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
-        "status": "IDLE",
-        "kind": "controller",
-        "model": "simulated-llm",
-        "autonomy_level": 3,
-        "require_approval": false,
-        "is_primary_controller": true,
-        "is_suspended": false,
-        "capabilities": [
-          "delegate_tasks",
-          "approve_tasks",
-          "code_analysis"
-        ],
-        "allowed_tools": [],
-        "external_config": {},
-        "max_concurrent_tasks": 1,
-        "current_task_id": null,
-        "system_prompt": "You are Nova, CTO.",
-        "description": "CTO do escritório local.",
-        "character_sprite_id": "modern-alex",
-        "max_cost": 2,
-        "max_iterations": 10,
-        "context_limit": 32000,
-        "memory_enabled": true,
-        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
-        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
-        "name": "Nova",
-        "slug": "nova",
-        "role": "CTO",
-        "color": "#5aa9e0"
-      },
-      {
-        "id": "43aabacd-b3ca-4be1-9953-a4690c422911",
-        "created_at": "2026-09-14T01:10:59.479Z",
-        "updated_at": "2026-09-14T01:10:59.479Z",
-        "manager_agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
-        "workstation_id": "0354d6c5-3906-488a-8ea1-4f4157ae754c",
-        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
-        "status": "IDLE",
-        "kind": "llm",
-        "model": "simulated-llm",
-        "autonomy_level": 3,
-        "require_approval": false,
-        "is_primary_controller": false,
-        "is_suspended": false,
-        "capabilities": [
-          "delegate_tasks",
-          "code_analysis",
-          "repository_read"
-        ],
-        "allowed_tools": [],
-        "external_config": {},
-        "max_concurrent_tasks": 1,
-        "current_task_id": null,
-        "system_prompt": "You are Orion, Tech Lead.",
-        "description": "Tech Lead do escritório local.",
-        "character_sprite_id": "modern-amelia",
-        "max_cost": 2,
-        "max_iterations": 10,
-        "context_limit": 32000,
-        "memory_enabled": true,
-        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
-        "department_id": "e6c8ad75-af5d-4c0a-a824-e57d2253955d",
-        "name": "Orion",
-        "slug": "orion",
-        "role": "Tech Lead",
-        "color": "#5ad1e0"
-      },
-      {
-        "id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
-        "created_at": "2026-09-14T01:10:59.479Z",
-        "updated_at": "2026-09-14T01:10:59.479Z",
-        "manager_agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
-        "workstation_id": "cfbd3cb4-97ae-45bf-965f-945ced808447",
-        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
-        "status": "IDLE",
-        "kind": "llm",
-        "model": "simulated-llm",
-        "autonomy_level": 1,
-        "require_approval": false,
-        "is_primary_controller": false,
-        "is_suspended": false,
-        "capabilities": [
-          "repository_read",
-          "repository_write",
-          "shell",
-          "testing"
-        ],
-        "allowed_tools": [],
-        "external_config": {},
-        "max_concurrent_tasks": 1,
-        "current_task_id": null,
-        "system_prompt": "You are Claudinho, Developer.",
-        "description": "Developer do escritório local.",
-        "character_sprite_id": "modern-bob",
-        "max_cost": 2,
-        "max_iterations": 10,
-        "context_limit": 32000,
-        "memory_enabled": true,
-        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
-        "department_id": "e6c8ad75-af5d-4c0a-a824-e57d2253955d",
-        "name": "Claudinho",
-        "slug": "claudinho",
-        "role": "Developer",
-        "color": "#f2b544"
-      },
-      {
-        "id": "c37bafb3-1ac1-4275-906e-571992d4384f",
-        "created_at": "2026-09-14T01:10:59.479Z",
-        "updated_at": "2026-09-14T01:10:59.479Z",
-        "manager_agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
-        "workstation_id": "627b9a0a-d4b1-48c4-b49c-4993a33f7960",
-        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
-        "status": "IDLE",
-        "kind": "llm",
-        "model": "simulated-llm",
-        "autonomy_level": 1,
-        "require_approval": false,
-        "is_primary_controller": false,
-        "is_suspended": false,
-        "capabilities": [
-          "testing",
-          "repository_read"
-        ],
-        "allowed_tools": [],
-        "external_config": {},
-        "max_concurrent_tasks": 1,
-        "current_task_id": null,
-        "system_prompt": "You are Sentinel, QA Engineer.",
-        "description": "QA Engineer do escritório local.",
-        "character_sprite_id": "modern-adam",
-        "max_cost": 2,
-        "max_iterations": 10,
-        "context_limit": 32000,
-        "memory_enabled": true,
-        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
-        "department_id": "47b2c7af-89a6-49ea-9625-ad4a25534568",
-        "name": "Sentinel",
-        "slug": "sentinel",
-        "role": "QA Engineer",
-        "color": "#5ad1a6"
-      },
-      {
-        "id": "459fc31f-cdbe-4f01-95ef-2204611d9a5e",
-        "created_at": "2026-09-14T01:10:59.479Z",
-        "updated_at": "2026-09-14T01:10:59.479Z",
-        "manager_agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
-        "workstation_id": "6a295b51-f742-4c52-ba75-a573c3a228fb",
-        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
-        "status": "IDLE",
-        "kind": "llm",
-        "model": "simulated-llm",
-        "autonomy_level": 2,
-        "require_approval": false,
-        "is_primary_controller": false,
-        "is_suspended": false,
-        "capabilities": [
-          "browse_web",
-          "code_analysis"
-        ],
-        "allowed_tools": [],
-        "external_config": {},
-        "max_concurrent_tasks": 1,
-        "current_task_id": null,
-        "system_prompt": "You are Scout, Research Agent.",
-        "description": "Research Agent do escritório local.",
-        "character_sprite_id": "modern-alex",
-        "max_cost": 2,
-        "max_iterations": 10,
-        "context_limit": 32000,
-        "memory_enabled": true,
-        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
-        "department_id": "97edd9f1-daba-4610-8f7c-fde36b572a98",
-        "name": "Scout",
-        "slug": "scout",
-        "role": "Research Agent",
-        "color": "#a07ce0"
-      }
-    ],
+    "agents": [],
     "agent_permissions": [
       {
         "id": "528d42a1-95f3-4bd5-82e1-b81022288dfd",
@@ -726,7 +510,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
-        "permission": "delegate_tasks"
+        "permission": "delegate_tasks",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "1eb593b0-8483-448c-a338-776f3e6c4302",
@@ -735,7 +521,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
-        "permission": "approve_tasks"
+        "permission": "approve_tasks",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "a1bd546c-0c41-404e-973f-02d199aa3453",
@@ -744,7 +532,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "e6a2058f-1d22-4c1e-9711-319dafeaafa5",
-        "permission": "manage_agents"
+        "permission": "manage_agents",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "b9a37c1d-4be4-4958-b62b-34da4aa414c8",
@@ -753,7 +543,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
-        "permission": "delegate_tasks"
+        "permission": "delegate_tasks",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "a2510fab-ec88-45cd-abfc-8ebd9a087bfb",
@@ -762,7 +554,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
-        "permission": "approve_tasks"
+        "permission": "approve_tasks",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "5e206764-2e03-49c6-ba96-9c2a41fb0c92",
@@ -771,7 +565,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "47dff714-bbe5-4893-b1b4-c306ee43fdd6",
-        "permission": "manage_agents"
+        "permission": "manage_agents",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "a3d08809-5dce-4734-8682-9ff28cd38668",
@@ -780,7 +576,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
-        "permission": "delegate_tasks"
+        "permission": "delegate_tasks",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "11c1b269-9364-4625-9b95-fb2d182670c1",
@@ -789,7 +587,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
-        "permission": "approve_tasks"
+        "permission": "approve_tasks",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "510d5c63-227d-4bf5-b46a-66159cdb0de5",
@@ -798,16 +598,20 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "43aabacd-b3ca-4be1-9953-a4690c422911",
-        "permission": "repository.read"
+        "permission": "repository.read",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "fd9a7f63-1d01-445b-93d8-bdb801fe7c6b",
         "created_at": "2026-09-14T01:10:59.480Z",
-        "updated_at": "2026-09-14T01:10:59.480Z",
+        "updated_at": "2026-09-14T05:02:34.852Z",
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
-        "permission": "repository.read"
+        "permission": "repository.read",
+        "granted": true,
+        "always_allow": true
       },
       {
         "id": "f4903ba6-0d50-41e3-9bfb-f47e84c35461",
@@ -816,7 +620,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
-        "permission": "repository.write"
+        "permission": "repository.write",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "3238eb9d-9c77-49f0-978e-a6757295e30d",
@@ -825,7 +631,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
-        "permission": "shell.execute"
+        "permission": "shell.execute",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "763ab870-8f49-4297-aa9f-800f2d52760f",
@@ -834,7 +642,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "9322017a-9e3d-4694-b30e-4c84c8ab59e7",
-        "permission": "tests.execute"
+        "permission": "tests.execute",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "67024b2e-4c53-4e4a-9809-f523c7c14ad8",
@@ -843,7 +653,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "c37bafb3-1ac1-4275-906e-571992d4384f",
-        "permission": "repository.read"
+        "permission": "repository.read",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "2dd0c009-01fa-4208-9700-b18fa61c4be5",
@@ -852,7 +664,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "c37bafb3-1ac1-4275-906e-571992d4384f",
-        "permission": "tests.execute"
+        "permission": "tests.execute",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "e11e1cdf-fbf4-4da4-ab63-0d6d2e9f2135",
@@ -861,7 +675,9 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "459fc31f-cdbe-4f01-95ef-2204611d9a5e",
-        "permission": "repository.read"
+        "permission": "repository.read",
+        "granted": true,
+        "always_allow": false
       },
       {
         "id": "5259fa06-cce7-49a4-8aae-3546692ec9e0",
@@ -870,10 +686,130 @@
         "granted_by": "00000000-0000-4000-8000-000000000001",
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "agent_id": "459fc31f-cdbe-4f01-95ef-2204611d9a5e",
-        "permission": "web.browse"
+        "permission": "web.browse",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "db658288-af36-4e41-9bf0-31cacbe6e4e6",
+        "created_at": "2026-09-14T05:14:50.162Z",
+        "updated_at": "2026-09-14T05:14:50.162Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "d38046f6-c670-4143-ae07-b98187213f95",
+        "permission": "repository.read",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "27de22c8-3324-468c-aa2d-a65a8f91e449",
+        "created_at": "2026-09-14T05:14:50.162Z",
+        "updated_at": "2026-09-14T05:14:50.162Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "d38046f6-c670-4143-ae07-b98187213f95",
+        "permission": "web.browse",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "b974b2ea-bbb7-4c9a-a5ac-44a49a6215db",
+        "created_at": "2026-09-14T19:49:01.296Z",
+        "updated_at": "2026-09-14T19:49:01.296Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "326434f0-1e34-45d6-a181-431250d34515",
+        "permission": "repository.read",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "fbb7e534-0a67-45cf-a9f3-079f8fb700a0",
+        "created_at": "2026-09-14T19:49:01.296Z",
+        "updated_at": "2026-09-14T19:49:01.296Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "326434f0-1e34-45d6-a181-431250d34515",
+        "permission": "repository.write",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "52e1bf6f-8bd6-42f6-a4cd-fb4854e4eab1",
+        "created_at": "2026-09-14T19:49:01.296Z",
+        "updated_at": "2026-09-14T19:49:01.296Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "326434f0-1e34-45d6-a181-431250d34515",
+        "permission": "tests.execute",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "c4b2aa8e-89ac-4473-bfe9-101ade630507",
+        "created_at": "2026-09-14T19:49:01.296Z",
+        "updated_at": "2026-09-14T19:49:01.296Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "326434f0-1e34-45d6-a181-431250d34515",
+        "permission": "git.branch.create",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "3e572f6e-9e58-4f5c-9d69-e738ec72af21",
+        "created_at": "2026-09-14T19:49:01.296Z",
+        "updated_at": "2026-09-14T19:49:01.296Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "326434f0-1e34-45d6-a181-431250d34515",
+        "permission": "git.commit",
+        "granted": true,
+        "always_allow": false
       }
     ],
-    "agent_tools": [],
+    "agent_tools": [
+      {
+        "id": "835964a8-75ec-43d5-b79d-081e3a847103",
+        "created_at": "2026-09-14T05:14:50.168Z",
+        "updated_at": "2026-09-14T05:14:50.168Z",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "d38046f6-c670-4143-ae07-b98187213f95",
+        "tool_id": "browser",
+        "enabled": true,
+        "config": {}
+      },
+      {
+        "id": "41827a25-3b79-4550-b997-e9c2d4132d54",
+        "created_at": "2026-09-14T19:49:01.307Z",
+        "updated_at": "2026-09-14T19:49:01.307Z",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "326434f0-1e34-45d6-a181-431250d34515",
+        "tool_id": "repository_read",
+        "enabled": true,
+        "config": {}
+      },
+      {
+        "id": "35605cc1-a6cc-4656-803d-60882fa2af84",
+        "created_at": "2026-09-14T19:49:01.307Z",
+        "updated_at": "2026-09-14T19:49:01.307Z",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "326434f0-1e34-45d6-a181-431250d34515",
+        "tool_id": "repository_write",
+        "enabled": true,
+        "config": {}
+      },
+      {
+        "id": "ac00a590-4e98-4851-95bf-8d4772f42d60",
+        "created_at": "2026-09-14T19:49:01.307Z",
+        "updated_at": "2026-09-14T19:49:01.307Z",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "326434f0-1e34-45d6-a181-431250d34515",
+        "tool_id": "testing",
+        "enabled": true,
+        "config": {}
+      }
+    ],
     "agent_memories": [],
     "missions": [],
     "mission_agents": [],

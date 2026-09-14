@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, shell, dialog } = require("electron");
 const { spawn } = require("node:child_process");
 const http = require("node:http");
 const path = require("node:path");
@@ -66,13 +66,34 @@ function createWindow() {
   void window.loadURL(`http://${HOST}:${PORT}/`);
 }
 
-if (!app.requestSingleInstanceLock()) app.quit();
+const bootstrapIndex = process.argv.indexOf("--runtime-bootstrapper");
+if (bootstrapIndex !== -1) {
+  // Separate Electron process: no UI, single-instance lock, IPC or parent pipes.
+  app
+    .whenReady()
+    .then(() => require("./startup/bootstrapper.cjs").run(process.argv[bootstrapIndex + 1]))
+    .catch(() => {
+      process.exitCode = 1;
+    })
+    .finally(() => app.quit());
+} else if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.whenReady().then(async () => {
     startLocalServer();
     try {
       await waitForServer();
       createWindow();
+      if (process.platform === "win32" && !process.argv.includes("--skip-runtime-bootstrap")) {
+        // Return only after independent ownership is acknowledged; completion is reported in status.json.
+        void require("./startup/launch.cjs")
+          .launch(app, dialog)
+          .catch((error) => {
+            dialog.showErrorBox(
+              "Inicialização dos agentes incompleta",
+              `${error.message}\nConsulte startup/startup.log na pasta de dados do aplicativo.`,
+            );
+          });
+      }
     } catch (error) {
       console.error(error);
       app.quit();

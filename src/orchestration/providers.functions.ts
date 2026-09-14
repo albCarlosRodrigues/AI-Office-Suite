@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { localDbServer } from "@/local/database.server";
+import { loadProviderSecrets, saveProviderSecrets } from "./provider-secret-service.server";
 
 /** Save provider credentials. Secrets never reach the browser again after this. */
 export const saveProviderSecret = createServerFn({ method: "POST" })
@@ -21,18 +22,11 @@ export const saveProviderSecret = createServerFn({ method: "POST" })
       .eq("id", data.providerId)
       .single();
     if (error || !provider) throw new Error("Provider not found");
-    const patch: Record<string, unknown> = {
-      provider_id: provider.id,
-      organization_id: provider.organization_id,
-      updated_at: new Date().toISOString(),
-    };
-    if (data.apiKey !== undefined) patch["api_key"] = data.apiKey;
-    if (data.bearerToken !== undefined) patch["bearer_token"] = data.bearerToken;
-    if (data.secretHeaders !== undefined) patch["secret_headers"] = data.secretHeaders;
-    const { error: upErr } = await localDbServer
-      .from("provider_secrets")
-      .upsert(patch as never, { onConflict: "provider_id" });
-    if (upErr) throw new Error(upErr.message);
+    await saveProviderSecrets(provider.id, provider.organization_id, {
+      ...(data.apiKey !== undefined ? { api_key: data.apiKey } : {}),
+      ...(data.bearerToken !== undefined ? { bearer_token: data.bearerToken } : {}),
+      ...(data.secretHeaders !== undefined ? { secret_headers: data.secretHeaders } : {}),
+    });
     const hasKey = Boolean(data.apiKey || data.bearerToken);
     await localDbServer
       .from("agent_providers")
@@ -58,17 +52,7 @@ export const testProvider = createServerFn({ method: "POST" })
       secret_headers: Record<string, string>;
     } | null = null;
     if (row.type !== "simulation" && row.type !== "lovable_ai") {
-      const { data: s } = await localDbServer
-        .from("provider_secrets")
-        .select("api_key, bearer_token, secret_headers")
-        .eq("provider_id", row.id)
-        .maybeSingle();
-      if (s)
-        secrets = {
-          api_key: s.api_key,
-          bearer_token: s.bearer_token,
-          secret_headers: (s.secret_headers ?? {}) as Record<string, string>,
-        };
+      secrets = (await loadProviderSecrets([row.id])).get(row.id) ?? null;
     }
     const provider = providerForHealth(row, secrets, {
       lovableApiKey: process.env["LOVABLE_API_KEY"],

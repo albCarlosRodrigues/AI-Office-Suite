@@ -65,6 +65,7 @@ export function AgentFormDialog({ agents, departments, providers, agent, trigger
     manager_agent_id: agent?.manager_agent_id ?? NONE,
     provider_id: agent?.provider_id ?? NONE,
     model: agent?.model ?? "",
+    context_limit: agent?.context_limit ?? 32000,
     system_prompt: agent?.system_prompt ?? p0.systemPrompt,
     personality: agent?.personality ?? "",
     autonomy_level: agent?.autonomy_level ?? p0.autonomy,
@@ -75,6 +76,7 @@ export function AgentFormDialog({ agents, departments, providers, agent, trigger
     max_iterations: agent?.max_iterations ?? 10,
     memory_enabled: agent?.memory_enabled ?? true,
     external_url: ((agent?.external_config ?? {}) as { url?: string }).url ?? "",
+    workspace: ((agent?.external_config ?? {}) as { workspace?: string }).workspace ?? "",
     character_sprite_id: agent?.character_sprite_id ?? p0.characterSpriteId,
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
@@ -125,6 +127,7 @@ export function AgentFormDialog({ agents, departments, providers, agent, trigger
         manager_agent_id: form.manager_agent_id === NONE ? null : form.manager_agent_id,
         provider_id: form.provider_id === NONE ? null : form.provider_id,
         model: form.model.trim() || null,
+        context_limit: form.context_limit,
         system_prompt: form.system_prompt.trim() || null,
         personality: form.personality.trim() || null,
         autonomy_level: form.autonomy_level,
@@ -134,7 +137,11 @@ export function AgentFormDialog({ agents, departments, providers, agent, trigger
         max_cost: form.max_cost,
         max_iterations: form.max_iterations,
         memory_enabled: form.memory_enabled,
-        external_config: form.kind === "external" ? { url: form.external_url.trim() } : {},
+        external_config: {
+          ...((agent?.external_config ?? {}) as Record<string, string>),
+          workspace: form.workspace.trim(),
+          ...(form.kind === "external" ? { url: form.external_url.trim() } : {}),
+        },
         character_sprite_id: form.character_sprite_id,
       };
       if (agent) {
@@ -215,6 +222,14 @@ export function AgentFormDialog({ agents, departments, providers, agent, trigger
             </div>
           )}
           <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Workspace autorizado (caminho local absoluto)</Label>
+              <Input
+                value={form.workspace}
+                onChange={(e) => set("workspace", e.target.value)}
+                placeholder="A:\\Projetos\\meu-projeto"
+              />
+            </div>
             <div className="space-y-1.5">
               <Label>Nome</Label>
               <Input
@@ -304,6 +319,17 @@ export function AgentFormDialog({ agents, departments, providers, agent, trigger
             </div>
             <div className="space-y-1.5">
               <Label>Provedor</Label>
+              <p className="text-xs text-muted-foreground">
+                Backend:{" "}
+                {String(
+                  (
+                    providers.find((p) => p.id === form.provider_id)?.config as Record<
+                      string,
+                      unknown
+                    >
+                  )?.["backend"] ?? "padrão do provedor",
+                )}
+              </p>
               <Select value={form.provider_id} onValueChange={(v) => set("provider_id", v)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -324,6 +350,15 @@ export function AgentFormDialog({ agents, departments, providers, agent, trigger
                 value={form.model}
                 onChange={(e) => set("model", e.target.value)}
                 placeholder="deixe vazio para usar o padrão do provedor"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Limite de contexto (tokens)</Label>
+              <Input
+                type="number"
+                min={1000}
+                value={form.context_limit}
+                onChange={(e) => set("context_limit", Number(e.target.value))}
               />
             </div>
             <div className="space-y-1.5">

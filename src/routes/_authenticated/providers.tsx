@@ -8,6 +8,7 @@ import { useOrg } from "@/lib/org-context";
 import { agentsQuery, providersQuery } from "@/lib/queries";
 import { saveProviderSecret, testProvider } from "@/orchestration/providers.functions";
 import { PageHeader, EmptyState, timeAgo } from "@/components/shared/PageHeader";
+import { StartupStatus } from "@/components/agents/StartupStatus";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,6 +160,7 @@ function ProvidersPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
+      <StartupStatus />
       <PageHeader
         eyebrow="Organizar"
         title="Provedores"
@@ -238,7 +240,13 @@ function ProviderDialog({ provider, trigger }: { provider?: AgentProvider; trigg
   const save = useServerFn(saveProviderSecret);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const cfg = (provider?.config ?? {}) as { kind?: string };
+  const cfg = (provider?.config ?? {}) as {
+    kind?: string;
+    backend?: string;
+    sessionId?: string;
+    conversationId?: string;
+    composerLabel?: string;
+  };
   const [form, setForm] = useState({
     name: provider?.name ?? "",
     type: (provider?.type ?? "lovable_ai") as ProviderType,
@@ -248,6 +256,10 @@ function ProviderDialog({ provider, trigger }: { provider?: AgentProvider; trigg
     max_tokens: provider?.max_tokens ?? 4096,
     timeout_ms: provider?.timeout_ms ?? 60000,
     external_agent: cfg.kind === "external_agent",
+    backend: cfg.backend ?? "default",
+    sessionId: cfg.sessionId ?? "",
+    conversationId: cfg.conversationId ?? "",
+    composerLabel: cfg.composerLabel ?? "",
     api_key: "",
     bearer_token: "",
   });
@@ -266,7 +278,14 @@ function ProviderDialog({ provider, trigger }: { provider?: AgentProvider; trigg
         temperature: form.temperature,
         max_tokens: form.max_tokens,
         timeout_ms: form.timeout_ms,
-        config: form.type === "custom" && form.external_agent ? { kind: "external_agent" } : {},
+        config: {
+          ...((provider?.config ?? {}) as Record<string, string>),
+          backend: form.backend,
+          sessionId: form.sessionId,
+          conversationId: form.conversationId,
+          composerLabel: form.composerLabel,
+          ...(form.type === "custom" && form.external_agent ? { kind: "external_agent" } : {}),
+        },
       };
       let id = provider?.id;
       if (provider) {
@@ -314,6 +333,68 @@ function ProviderDialog({ provider, trigger }: { provider?: AgentProvider; trigg
           <DialogDescription>{meta.hint}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Backend de execução</Label>
+            <Select
+              value={form.backend}
+              onValueChange={(backend) =>
+                setForm({
+                  ...form,
+                  backend,
+                  ...(backend === "prx-localant"
+                    ? {
+                        type: "custom",
+                        base_url: "http://127.0.0.1:9223",
+                        model: "chatgpt-session",
+                        external_agent: false,
+                      }
+                    : backend === "free-claude"
+                      ? {
+                          type: "openrouter",
+                          base_url: "https://openrouter.ai/api/v1",
+                          model: "",
+                          external_agent: false,
+                        }
+                      : {}),
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Padrão do provedor</SelectItem>
+                <SelectItem value="prx-localant">GPT — PRX + LocalAnt</SelectItem>
+                <SelectItem value="free-claude">Claudinho — FreeClaude / OpenRouter</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {form.backend === "prx-localant" && (
+            <div className="space-y-2">
+              <Label>ID da sessão PRX (target)</Label>
+              <Input
+                required
+                value={form.sessionId}
+                onChange={(e) => setForm({ ...form, sessionId: e.target.value })}
+              />
+              <Label>URL exata da conversa</Label>
+              <Input
+                required
+                value={form.conversationId}
+                onChange={(e) => setForm({ ...form, conversationId: e.target.value })}
+              />
+              <Label>Nome acessível do campo de mensagem</Label>
+              <Input
+                required
+                value={form.composerLabel}
+                onChange={(e) => setForm({ ...form, composerLabel: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Usa uma sessão ChatGPT autenticada. Sujeita aos limites do seu plano. LocalAnt
+                encaminha pedidos de ferramentas às políticas do AI Office.
+              </p>
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Nome</Label>

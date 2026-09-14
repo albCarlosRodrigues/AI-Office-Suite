@@ -13,6 +13,7 @@ export class DemoMissionPlanner {
         dependsOn: [],
         tools: ["web_search", "repository_read"],
         expectedOutput: "Findings list with references",
+        acceptanceCriteria: ["Findings include traceable references"],
       },
       {
         code: "T2",
@@ -22,6 +23,7 @@ export class DemoMissionPlanner {
         dependsOn: [],
         tools: ["code_analysis", "repository_read"],
         expectedOutput: "Impact analysis + approach",
+        acceptanceCriteria: ["Analysis identifies affected components and a bounded approach"],
       },
       {
         code: "T3",
@@ -31,6 +33,10 @@ export class DemoMissionPlanner {
         dependsOn: ["T1", "T2"],
         tools: ["repository_read", "repository_write", "shell", "testing"],
         expectedOutput: "Diff + passing local tests",
+        acceptanceCriteria: [
+          "A minimal diff is produced",
+          "Relevant local tests exit successfully",
+        ],
       },
       {
         code: "T4",
@@ -40,6 +46,7 @@ export class DemoMissionPlanner {
         dependsOn: ["T3"],
         tools: ["testing", "repository_read"],
         expectedOutput: "Test report",
+        acceptanceCriteria: ["Test report identifies each executed deterministic check"],
       },
     ];
   }

@@ -6,6 +6,7 @@ import type {
   RiskLevel,
   WorkerResponseStatus,
 } from "@/types/domain";
+import type { ManagerRequest, ManagerResponse } from "../manager-contract";
 
 export interface Usage {
   tokensIn: number;
@@ -24,9 +25,11 @@ export interface PlannedTask {
   dependsOn: string[];
   tools: string[];
   expectedOutput: string;
+  acceptanceCriteria: string[];
 }
 
 export interface PlanInput {
+  context?: { missionId: string; taskId: string; agentRunId: string };
   goal: string;
   title: string;
   commander: Agent;
@@ -42,6 +45,7 @@ export interface PlanResult {
 }
 
 export interface ExecInput {
+  agentRunId?: string;
   agent: Agent;
   systemPrompt: string;
   command: {
@@ -52,6 +56,7 @@ export interface ExecInput {
     objective: string;
     instructions: string;
     expectedOutput: string;
+    acceptanceCriteria: string[];
     allowedTools: string[];
     forbiddenActions: string[];
     constraints: Record<string, unknown>;
@@ -65,6 +70,7 @@ export interface ExecInput {
 export interface ToolCallRecord {
   toolId: string;
   input: string;
+  arguments?: Record<string, unknown> | undefined;
   output: string;
   risk: RiskLevel;
   latencyMs: number;
@@ -92,6 +98,7 @@ export interface WorkerResponse {
 }
 
 export interface ReviewInput {
+  context?: { missionId: string; taskId: string; agentRunId: string };
   reviewer: Agent;
   systemPrompt: string;
   task: {
@@ -99,6 +106,7 @@ export interface ReviewInput {
     title: string;
     description: string;
     expectedOutput: string;
+    acceptanceCriteria: string[];
     retries: number;
   };
   result: { summary: string; evidence: Evidence[] };
@@ -111,6 +119,7 @@ export interface ReviewResult {
 }
 
 export interface MeetingTurnInput {
+  context?: { missionId: string; taskId: string; agentRunId: string };
   speaker: Agent;
   systemPrompt: string;
   topic: string;
@@ -124,6 +133,7 @@ export interface MeetingTurnResult {
 }
 
 export interface SummaryInput {
+  context?: { missionId: string; taskId: string; agentRunId: string };
   goal: string;
   tasks: { code: string; title: string; status: string; result: string | null }[];
   systemPrompt: string;
@@ -135,14 +145,18 @@ export interface SummaryResult {
 }
 
 export interface AgentProvider {
+  decide?(
+    request: ManagerRequest,
+    signal?: AbortSignal,
+  ): Promise<ManagerResponse & { usage: Usage }>;
   readonly type: ProviderType;
   readonly simulated: boolean;
   readonly model: string;
-  plan(input: PlanInput): Promise<PlanResult>;
-  executeTask(input: ExecInput): Promise<WorkerResponse>;
-  review(input: ReviewInput): Promise<ReviewResult>;
-  meetingTurn(input: MeetingTurnInput): Promise<MeetingTurnResult>;
-  summarize(input: SummaryInput): Promise<SummaryResult>;
+  plan(input: PlanInput, signal?: AbortSignal): Promise<PlanResult>;
+  executeTask(input: ExecInput, signal?: AbortSignal): Promise<WorkerResponse>;
+  review(input: ReviewInput, signal?: AbortSignal): Promise<ReviewResult>;
+  meetingTurn(input: MeetingTurnInput, signal?: AbortSignal): Promise<MeetingTurnResult>;
+  summarize(input: SummaryInput, signal?: AbortSignal): Promise<SummaryResult>;
   healthCheck(): Promise<{ health: ProviderHealth; latencyMs: number; message: string }>;
 }
 

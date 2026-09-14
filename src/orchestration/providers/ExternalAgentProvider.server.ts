@@ -49,6 +49,7 @@ const responseSchema = z.object({
       z.object({
         toolId: z.string().max(200),
         input: z.string().max(20_000),
+        arguments: z.record(z.unknown()).optional(),
         output: z.string().max(100_000),
         risk: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
         latencyMs: z.number().int().min(0).max(3_600_000),

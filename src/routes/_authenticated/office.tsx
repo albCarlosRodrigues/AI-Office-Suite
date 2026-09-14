@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useOrg } from "@/lib/org-context";
 import {
   agentsQuery,
@@ -42,12 +42,19 @@ function OfficePage() {
   const { org } = useOrg();
   const orgId = org!.id;
   const map = useQuery(officeMapQuery(orgId));
-  const agents = useQuery(agentsQuery(orgId));
+  const agents = useQuery({ ...agentsQuery(orgId), refetchInterval: 2000 });
   const departments = useQuery(departmentsQuery(orgId));
   const events = useQuery({ ...eventsQuery(orgId), refetchInterval: 6000 });
-  const missions = useQuery(missionsQuery(orgId));
+  const missions = useQuery({ ...missionsQuery(orgId), refetchInterval: 3000 });
+  const seenEvents = useRef<Set<string> | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<"feed" | "roster">("feed");
+  const [chatMission, setChatMission] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
+  const conversation = (events.data ?? [])
+    .filter((event) => !chatMission || event.mission_id === chatMission)
+    .slice()
+    .reverse();
 
   const selected = agents.data?.find((a) => a.id === selectedId) ?? null;
   const deptName = (id: string | null) => departments.data?.find((d) => d.id === id)?.name ?? "—";
@@ -64,6 +71,19 @@ function OfficePage() {
   useEffect(() => {
     officeBus.emit({ type: "focus:agent", agentId: selectedId });
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!events.data) return;
+    if (!seenEvents.current) {
+      seenEvents.current = new Set(events.data.map((event) => event.id));
+      return;
+    }
+    const fresh = events.data.filter((event) => !seenEvents.current!.has(event.id)).reverse();
+    for (const event of fresh) {
+      seenEvents.current.add(event.id);
+      officeBus.emit({ type: "mission:event", event });
+    }
+  }, [events.data]);
 
   if (map.isLoading || agents.isLoading) {
     return (
@@ -152,7 +172,18 @@ function OfficePage() {
         </div>
       </div>
 
-      <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-card/40">
+      <button
+        className="absolute right-3 top-2 z-20 rounded bg-card px-2 py-1 text-xs lg:hidden"
+        onClick={() => setChatOpen(!chatOpen)}
+      >
+        Conversa
+      </button>
+      <aside
+        className={cn(
+          "z-10 w-80 shrink-0 flex-col border-l border-border bg-card max-lg:absolute max-lg:inset-y-0 max-lg:right-0 lg:flex",
+          chatOpen ? "flex" : "hidden",
+        )}
+      >
         {selected ? (
           <AgentInspector
             agent={selected}
@@ -162,6 +193,34 @@ function OfficePage() {
           />
         ) : (
           <>
+            <div className="border-b border-border p-3">
+              <p className="text-sm font-semibold">Equipe — {org!.name}</p>
+              <div className="my-2 flex gap-2">
+                {(agents.data ?? []).map((agent) => (
+                  <span
+                    key={agent.id}
+                    title={`${agent.name}: ${agent.status}`}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    <AgentAvatar agent={agent} size={14} />
+                    {agent.name}
+                  </span>
+                ))}
+              </div>
+              <select
+                aria-label="Grupo da missão"
+                className="w-full rounded border border-border bg-background p-1 text-xs"
+                value={chatMission}
+                onChange={(e) => setChatMission(e.target.value)}
+              >
+                <option value="">Todas as missões</option>
+                {(missions.data ?? []).map((mission) => (
+                  <option key={mission.id} value={mission.id}>
+                    {mission.title}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex border-b border-border">
               {(["feed", "roster"] as const).map((t) => (
                 <button
@@ -172,7 +231,7 @@ function OfficePage() {
                     tab === t && "border-b-2 border-primary text-primary",
                   )}
                 >
-                  {t === "feed" ? "Atividade" : `Equipe · ${agents.data?.length ?? 0}`}
+                  {t === "feed" ? "Conversa" : `Equipe · ${agents.data?.length ?? 0}`}
                 </button>
               ))}
             </div>
@@ -184,20 +243,54 @@ function OfficePage() {
                       Nenhuma atividade ainda. Inicie uma missão para movimentar o escritório.
                     </li>
                   )}
-                  {(events.data ?? []).slice(0, 80).map((ev) => {
+                  {conversation.map((ev) => {
                     const a = agents.data?.find((x) => x.id === ev.agent_id);
                     return (
-                      <li key={ev.id} className="flex gap-2.5 px-3 py-2">
+                      <li
+                        key={ev.id}
+                        className="m-2 flex gap-2.5 rounded-lg border border-border/40 bg-muted/30 px-3 py-2"
+                      >
                         {a ? (
                           <AgentAvatar agent={a} size={14} />
                         ) : (
                           <span className="h-[21px] w-[14px] shrink-0 rounded-sm bg-muted" />
                         )}
                         <div className="min-w-0 flex-1">
+                          <div className="mb-0.5 flex items-baseline justify-between gap-2">
+                            <p className="truncate text-xs font-semibold text-foreground">
+                              {a?.name ?? "Runtime"}
+                              {a?.role && (
+                                <span className="font-normal text-muted-foreground">
+                                  {" "}
+                                  · {a.role}
+                                </span>
+                              )}
+                            </p>
+                            <span className="shrink-0 font-mono text-[9px] text-muted-foreground">
+                              {timeAgo(ev.created_at)}
+                            </span>
+                          </div>
                           <p className="text-xs leading-snug">{ev.message}</p>
                           <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-                            {ev.type.toLowerCase().replace(/_/g, " ")} · {timeAgo(ev.created_at)}
+                            {ev.type.toLowerCase().replace(/_/g, " ")}
                           </p>
+                          {ev.mission_id && (
+                            <Link
+                              to="/missions/$missionId"
+                              params={{ missionId: ev.mission_id }}
+                              className="text-[10px] text-primary"
+                            >
+                              Abrir missão e evidências →
+                            </Link>
+                          )}
+                          {ev.task_id && (
+                            <p
+                              className="truncate text-[9px] text-muted-foreground"
+                              title={ev.task_id}
+                            >
+                              Tarefa: {ev.task_id}
+                            </p>
+                          )}
                         </div>
                       </li>
                     );

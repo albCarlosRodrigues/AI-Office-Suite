@@ -22,6 +22,15 @@ export function attachOfficeBridge(scene: OfficeScene) {
         const ev = e.event;
         if (ev.agent_id && shouldSpeak(ev.type))
           scene.say(ev.agent_id, humanize(ev.type, ev.message));
+        if (
+          (ev.type === "TASK_COMPLETED" ||
+            ev.type === "REPORT_TO_MANAGER" ||
+            ev.type === "ESCALATED") &&
+          ev.agent_id
+        )
+          scene.reportToManager(ev.agent_id, ev.target_agent_id, ev.message);
+        if (ev.type === "REVIEW_APPROVED" && ev.agent_id)
+          scene.reportToManager(ev.agent_id, null, ev.message);
         break;
       }
       case "kill_switch":
@@ -39,6 +48,7 @@ const SPEAK_TYPES = new Set([
   "COMMAND_ISSUED",
   "COMMAND_ACCEPTED",
   "TASK_COMPLETED",
+  "REVIEW_APPROVED",
   "TASK_FAILED",
   "APPROVAL_REQUESTED",
   "REVISION_REQUESTED",

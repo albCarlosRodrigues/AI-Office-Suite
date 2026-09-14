@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import packageJson from "../../../package.json";
 
 const NAV: {
   to: string;
@@ -115,7 +116,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="min-w-0">
             <p className="font-display text-sm font-semibold leading-tight">AI Pixel Office</p>
             <p className="truncate font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              v1.2 · local
+              v{packageJson.version} · local
             </p>
           </div>
         </div>
