@@ -15,7 +15,7 @@ import {
 } from "@/lib/queries";
 import { PERMISSIONS } from "@/permissions/catalog";
 import { TOOL_CATALOG } from "@/orchestration/tools/catalog";
-import { chainOfCommand, subordinatesOf } from "@/agents/hierarchy";
+import { operationalChainOfCommand, subordinatesOf } from "@/agents/hierarchy";
 import { PageHeader, StatCard, KeyValue, formatMoney } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { AgentAvatar } from "@/components/shared/AgentAvatar";
@@ -85,7 +85,7 @@ function AgentDetailPage() {
   const all = agents.data ?? [];
   const dept = departments.data?.find((d) => d.id === agent.department_id);
   const provider = providers.data?.find((p) => p.id === agent.provider_id);
-  const chain = chainOfCommand(agent.id, all);
+  const chain = operationalChainOfCommand(agent.id, all);
   const reports = subordinatesOf(agent.id, all);
   const spent = (costs.data ?? []).reduce((s, c) => s + Number(c.estimated_cost), 0);
   const completed = (tasks.data ?? []).filter((t) => t.status === "completed").length;

@@ -29,7 +29,7 @@ import {
   buildCommandContext,
   selectDependencyContext,
 } from "./ContextBuilder";
-import { subordinatesOf } from "@/agents/hierarchy";
+import { effectiveManagerOf, isOperationallyActive, subordinatesOf } from "@/agents/hierarchy";
 import { TOOL_MAP } from "./tools/catalog";
 import { RISK_ORDER } from "@/permissions/catalog";
 import { AgentCapabilityMatcher } from "./AgentCapabilityMatcher";
@@ -46,7 +46,7 @@ import { MeetingService } from "./MeetingService";
 import { detectDeadlock, validateTaskDag } from "./dag-validator";
 import { parseMissionLease } from "./lease";
 import { MissionContractSchema, TaskContractSchema, type TaskContract } from "./contracts";
-import { enforceRuntimeEvidence } from "./tool-claims";
+import { enforceRuntimeEvidence, validateRuntimeToolRequests } from "./tool-claims";
 import { redact } from "@/runtime/security/redaction";
 import { runtimeDurableStore } from "@/runtime/durable/store.server";
 import { DurableMissionRuntime } from "@/runtime/durable/mission-runtime.server";
@@ -125,6 +125,14 @@ export class OrchestrationEngine {
   private agent(id: string | null | undefined): Agent | null {
     return this.agents.find((a) => a.id === id) ?? null;
   }
+
+  /**
+   * Dynamic stack lookup. Structural manager_agent_id is never mutated.
+   * Suspended/unavailable managers are popped until an active manager is found.
+   */
+  private managerOf(agent: Agent): Agent | null {
+    return effectiveManagerOf(agent.id, this.agents);
+  }
   private dept(id: string | null | undefined): Department | null {
     return this.departments.find((d) => d.id === id) ?? null;
   }
@@ -143,7 +151,7 @@ export class OrchestrationEngine {
       agent,
       this.dept(agent.department_id),
       this.policies,
-      this.agent(agent.manager_agent_id),
+      this.managerOf(agent),
     );
   }
 
@@ -296,6 +304,35 @@ export class OrchestrationEngine {
         Object.assign(a, { status, current_mission_id: null, current_task_id: null });
   }
 
+  private async pauseMissionState(mission: Mission, message: string) {
+    const pausedPhase = mission.phase.startsWith("paused:")
+      ? mission.phase
+      : `paused:${mission.phase}`;
+
+    const { error } = await this.db
+      .from("missions")
+      .update({
+        status: "STOPPED",
+        phase: pausedPhase,
+        completed_at: null,
+        stop_requested: false,
+      })
+      .eq("id", mission.id);
+
+    if (error) throw new Error(error.message);
+
+    await this.releaseAgents(mission, "IDLE");
+
+    await this.event(mission, "MISSION_PAUSED", message, {
+      agentId: mission.commander_agent_id,
+    });
+
+    await this.audit(mission, "mission.pause", {
+      agentId: mission.commander_agent_id,
+      output: message,
+      risk: "LOW",
+    });
+  }
   private async finish(
     mission: Mission,
     status: "COMPLETED" | "FAILED" | "STOPPED",
@@ -396,6 +433,136 @@ export class OrchestrationEngine {
     return { ok: true };
   }
 
+  async requestPause(missionId: string) {
+    const { data: mission, error } = await this.db
+      .from("missions")
+      .select("*")
+      .eq("id", missionId)
+      .single();
+
+    if (error || !mission) {
+      throw new Error("Mission not found");
+    }
+
+    await this.load(mission.organization_id);
+
+    if (mission.status === "STOPPED" && mission.phase.startsWith("paused:")) {
+      return { ok: true, alreadyPaused: true };
+    }
+
+    if (!["PLANNING", "RUNNING", "WAITING_APPROVAL", "REVIEWING"].includes(mission.status)) {
+      throw new Error(`Mission cannot be paused from status ${mission.status}`);
+    }
+
+    const { error: updateError } = await this.db
+      .from("missions")
+      .update({ stop_requested: true })
+      .eq("id", mission.id);
+
+    if (updateError) throw new Error(updateError.message);
+
+    await this.event(
+      mission,
+      "MISSION_PAUSE_REQUESTED",
+      "The human operator requested a pause. The mission will pause at the next safe execution boundary.",
+      { agentId: mission.commander_agent_id },
+    );
+
+    await this.audit(mission, "mission.pause_requested", {
+      agentId: mission.commander_agent_id,
+      risk: "LOW",
+    });
+
+    return { ok: true };
+  }
+
+  async resume(missionId: string) {
+    const { data: mission, error } = await this.db
+      .from("missions")
+      .select("*")
+      .eq("id", missionId)
+      .single();
+
+    if (error || !mission) {
+      throw new Error("Mission not found");
+    }
+
+    if (mission.status !== "STOPPED" || !mission.phase.startsWith("paused:")) {
+      throw new Error("Only a paused mission can be continued.");
+    }
+
+    await this.load(mission.organization_id);
+
+    const commander = this.agent(mission.commander_agent_id);
+
+    if (!commander) {
+      throw new Error("Mission needs a commander agent");
+    }
+
+    if (commander.is_suspended || ["OFFLINE", "PAUSED", "ERROR"].includes(commander.status)) {
+      throw new Error(`${commander.name} is not operationally available`);
+    }
+
+    const previousPhase = mission.phase.slice("paused:".length) || "executing";
+
+    let nextStatus: Mission["status"] = "RUNNING";
+
+    if (previousPhase === "planning" || previousPhase === "kickoff") {
+      nextStatus = "PLANNING";
+    } else if (previousPhase === "finalizing") {
+      nextStatus = "REVIEWING";
+    } else {
+      const { data: approvals, error: approvalError } = await this.db
+        .from("approval_requests")
+        .select("id")
+        .eq("mission_id", mission.id)
+        .eq("status", "PENDING");
+
+      if (approvalError) throw new Error(approvalError.message);
+
+      nextStatus = (approvals?.length ?? 0) > 0 ? "WAITING_APPROVAL" : "RUNNING";
+    }
+
+    const { error: updateError } = await this.db
+      .from("missions")
+      .update({
+        status: nextStatus,
+        phase: previousPhase,
+        completed_at: null,
+        stop_requested: false,
+      })
+      .eq("id", mission.id);
+
+    if (updateError) throw new Error(updateError.message);
+
+    const commanderStatus: AgentStatus =
+      nextStatus === "REVIEWING"
+        ? "REVIEWING"
+        : nextStatus === "PLANNING"
+          ? "THINKING"
+          : "DELEGATING";
+
+    await this.setAgentStatus(commander.id, commanderStatus, {
+      current_mission_id: mission.id,
+      current_task_id: null,
+    });
+
+    await this.event(mission, "MISSION_RESUMED", `Mission resumed from ${previousPhase}.`, {
+      agentId: commander.id,
+    });
+
+    await this.audit(mission, "mission.resume", {
+      agentId: commander.id,
+      output: `Resumed from ${previousPhase}`,
+      risk: "LOW",
+    });
+
+    return {
+      ok: true,
+      status: nextStatus,
+      phase: previousPhase,
+    };
+  }
   async requestStop(missionId: string) {
     const { data: mission } = await this.db
       .from("missions")
@@ -576,8 +743,11 @@ export class OrchestrationEngine {
 
     if (this.org.kill_switch_active) return { acted: false, note: "kill switch active" };
     if (m0.stop_requested) {
-      await this.finish(m0, "STOPPED", "Stop requested by operator.");
-      return { acted: true, note: "stopped" };
+      await this.pauseMissionState(
+        m0,
+        "Mission paused by the human operator at a safe execution boundary.",
+      );
+      return { acted: true, note: "paused" };
     }
 
     if (m0.status === "WAITING_APPROVAL") return { acted: false, note: "waiting approval" };
@@ -652,9 +822,7 @@ export class OrchestrationEngine {
     const allowed = mission.allowed_agent_ids.length
       ? subtree.filter((a) => mission.allowed_agent_ids.includes(a.id))
       : subtree;
-    return allowed.filter(
-      (a) => !a.is_suspended && a.status !== "OFFLINE" && a.status !== "PAUSED",
-    );
+    return allowed.filter(isOperationallyActive);
   }
 
   private async stepPlanning(mission: Mission) {
@@ -864,12 +1032,7 @@ export class OrchestrationEngine {
       if (!agent) {
         const gaps = candidates
           .map((candidate) => {
-            const gaps = missingTaskAccess(
-              task,
-              candidate,
-              this.permissions,
-              this.toolSettings,
-            );
+            const gaps = missingTaskAccess(task, candidate, this.permissions, this.toolSettings);
             const missing = [...gaps.missingTools, ...gaps.missingPermissions];
             return `${candidate.name}: ${
               missing.length
@@ -900,23 +1063,21 @@ export class OrchestrationEngine {
     const chain: Agent[] = [];
     if (worker.id !== commander.id) {
       let cur = worker;
-      while (
-        cur.manager_agent_id &&
-        cur.manager_agent_id !== commander.id &&
-        chain.length < maxDepth
-      ) {
-        const mgr = this.agent(cur.manager_agent_id);
-        if (!mgr) break;
+      const seen = new Set<string>();
+
+      while (chain.length < maxDepth) {
+        const mgr = this.managerOf(cur);
+
+        if (!mgr || mgr.id === commander.id || seen.has(mgr.id)) {
+          break;
+        }
+
+        seen.add(mgr.id);
         chain.unshift(mgr);
         cur = mgr;
       }
     }
-    const allowedTools = allowedToolsForTask(
-      task,
-      worker,
-      this.permissions,
-      this.toolSettings,
-    );
+    const allowedTools = allowedToolsForTask(task, worker, this.permissions, this.toolSettings);
     if (allowedTools.length !== task.tools.length) {
       const gaps = missingTaskAccess(task, worker, this.permissions, this.toolSettings);
       throw new Error(
@@ -1383,17 +1544,37 @@ export class OrchestrationEngine {
         cancellation.controller.signal,
       );
       if (cancellation.controller.signal.aborted) throw new Error("PROVIDER_CALL_CANCELLED");
-      if ((worker.external_config as Record<string, unknown>)?.["backend"] === "prx-localant") {
-        response.toolCalls = response.toolCalls.map((call) => ({
-          ...call,
-          toolId: LocalAntExecutionAdapter.toolId(call.toolId),
-        }));
+      response.toolCalls = response.toolCalls.map((call) => ({
+        ...call,
+        toolId: LocalAntExecutionAdapter.toolId(call.toolId),
+      }));
+
+      const existingRuntimeToolResults = (command.context as Record<string, unknown>)[
+        "runtimeToolResults"
+      ];
+
+      const verifiedEvidenceCount = Array.isArray(existingRuntimeToolResults)
+        ? existingRuntimeToolResults.length
+        : 0;
+
+      const toolRequestError = provider.simulated
+        ? null
+        : validateRuntimeToolRequests(response, command.allowed_tools, verifiedEvidenceCount > 0);
+
+      if (toolRequestError) {
+        response = {
+          ...response,
+          status: "FAILED",
+          summary: toolRequestError,
+          toolCalls: [],
+        };
       }
+
       response = enforceRuntimeEvidence(
         response,
         provider.simulated,
         command.allowed_tools.length > 0,
-        0,
+        verifiedEvidenceCount,
       );
       await this.recordUsage(
         mission,
@@ -1594,33 +1775,237 @@ export class OrchestrationEngine {
       : { data: null };
     if (result?.status === "BLOCKED") {
       const durableState = await runtimeDurableStore().snapshot();
+
       const requests = durableState.toolRequests.filter(
         (request) => request.taskId === task.id && request.commandId === command?.id,
       );
-      if (requests.length && requests.every((request) => request.status === "COMPLETED")) {
-        const runtimeEvidence = requests.flatMap((request) => {
-          const saved = durableState.toolResults.find((item) => item.id === request.toolResultId);
-          return saved
-            ? [
-                {
-                  type: "command_output",
-                  title: `Verified ${request.toolId}`,
-                  content: JSON.stringify(saved.result),
-                  artifactRef: saved.result.stdoutArtifactRef,
-                },
-              ]
-            : [];
-        });
+
+      if (!requests.length) {
         result = {
           ...result,
-          status: "COMPLETED",
-          summary: "Durable ToolExecutor completed all requested operations.",
-          evidence: runtimeEvidence as never,
+          status: "FAILED",
+          summary:
+            "TOOL_CALL_INVALID: worker entered BLOCKED without an executable runtime tool request.",
         };
+
         await this.db
           .from("command_results")
-          .update({ status: "COMPLETED", summary: result.summary, evidence: result.evidence })
+          .update({
+            status: "FAILED",
+            summary: result.summary,
+          })
           .eq("id", result.id);
+      } else {
+        const failedRequest = requests.find((request) =>
+          ["FAILED", "DENIED", "CANCELLED", "DEAD_LETTER"].includes(request.status),
+        );
+
+        if (failedRequest) {
+          result = {
+            ...result,
+            status: "FAILED",
+            summary:
+              `RUNTIME_TOOL_FAILED: ${failedRequest.toolId}: ` +
+              `${failedRequest.failureMessage ?? failedRequest.status}`,
+          };
+
+          await this.db
+            .from("command_results")
+            .update({
+              status: "FAILED",
+              summary: result.summary,
+            })
+            .eq("id", result.id);
+        } else if (requests.some((request) => request.status !== "COMPLETED")) {
+          return {
+            acted: false,
+            note: "waiting for runtime tools",
+          };
+        } else if (command) {
+          const dataFile =
+            process.env["AI_OFFICE_DATA_FILE"] ??
+            path.join(process.cwd(), "data", "ai-office.json");
+
+          const artifactRoot =
+            process.env["AI_OFFICE_ARTIFACT_DIR"] ?? path.join(path.dirname(dataFile), "artifacts");
+
+          const artifactStore = new FileArtifactStore(artifactRoot);
+
+          const readArtifact = async (ref: string | null, limit: number) => {
+            if (!ref) return "";
+
+            try {
+              const artifact = await artifactStore.get(ref);
+
+              return new TextDecoder().decode(artifact.content).slice(0, limit);
+            } catch (error) {
+              return `ARTIFACT_READ_FAILED: ${
+                error instanceof Error ? error.message : String(error)
+              }`;
+            }
+          };
+
+          const runtimeToolResults = await Promise.all(
+            requests.slice(0, 12).map(async (request) => {
+              const saved = durableState.toolResults.find(
+                (item) => item.id === request.toolResultId,
+              );
+
+              return {
+                toolId: request.toolId,
+                arguments: request.arguments,
+                status: saved?.result.status ?? "FAILED",
+                exitCode: saved?.result.exitCode ?? null,
+                stdout: await readArtifact(saved?.result.stdoutArtifactRef ?? null, 8_000),
+                stderr: await readArtifact(saved?.result.stderrArtifactRef ?? null, 2_000),
+                verified: saved?.result.verified ?? false,
+              };
+            }),
+          );
+
+          const allVerified =
+            runtimeToolResults.length === requests.length &&
+            runtimeToolResults.every(
+              (toolResult) => toolResult.verified && toolResult.status === "COMPLETED",
+            );
+
+          if (!allVerified) {
+            result = {
+              ...result,
+              status: "FAILED",
+              summary:
+                "RUNTIME_TOOL_EVIDENCE_INCOMPLETE: not all requested tools produced verified completed results.",
+            };
+
+            await this.db
+              .from("command_results")
+              .update({
+                status: "FAILED",
+                summary: result.summary,
+              })
+              .eq("id", result.id);
+          } else {
+            const currentContext = (command.context ?? {}) as Record<string, unknown>;
+
+            const toolRound = Number(currentContext["toolRound"] ?? 0) + 1;
+
+            const maxToolRounds = Math.max(1, Math.min(Number(command.max_iterations ?? 3), 6));
+
+            if (toolRound > maxToolRounds) {
+              result = {
+                ...result,
+                status: "FAILED",
+                summary: `TOOL_LOOP_LIMIT: exceeded ${maxToolRounds} runtime tool continuation rounds.`,
+              };
+
+              await this.db
+                .from("command_results")
+                .update({
+                  status: "FAILED",
+                  summary: result.summary,
+                })
+                .eq("id", result.id);
+            } else {
+              const priorEvidence = (result.evidence as unknown as Evidence[]) ?? [];
+
+              const runtimeEvidence: Evidence[] = runtimeToolResults.map((toolResult) => ({
+                type: "command_output",
+                title: `Verified ${toolResult.toolId}`,
+                content: JSON.stringify(toolResult),
+              }));
+
+              await this.db
+                .from("command_results")
+                .update({
+                  status: "COMPLETED",
+                  summary:
+                    "Runtime tools completed; verified results were delivered to the agent continuation.",
+                  evidence: [...priorEvidence, ...runtimeEvidence] as never,
+                })
+                .eq("id", result.id);
+
+              await this.db
+                .from("commands")
+                .update({
+                  status: "COMPLETED",
+                  completed_at: new Date().toISOString(),
+                })
+                .eq("id", command.id);
+
+              const { error: continuationError } = await this.db.from("commands").upsert(
+                {
+                  organization_id: mission.organization_id,
+                  mission_id: mission.id,
+                  task_id: task.id,
+                  parent_command_id: command.id,
+                  issued_by_agent_id: command.issued_by_agent_id,
+                  assigned_to_agent_id: worker.id,
+                  objective: command.objective,
+                  instructions:
+                    `${command.instructions}\n\n` +
+                    `Runtime tool round ${toolRound} completed. ` +
+                    `Verified outputs are available in context.runtimeToolResults. ` +
+                    `Use those outputs to continue the task. ` +
+                    `If the acceptance criteria are satisfied, return COMPLETED with a concise synthesis and evidence. ` +
+                    `Request another tool only if additional runtime evidence is actually necessary.`,
+                  constraints: command.constraints as never,
+                  allowed_tools: command.allowed_tools,
+                  forbidden_actions: command.forbidden_actions,
+                  expected_output: command.expected_output,
+                  context: {
+                    ...currentContext,
+                    runtimeToolResults,
+                    toolRound,
+                  } as never,
+                  max_iterations: command.max_iterations,
+                  max_cost: command.max_cost,
+                  status: "PENDING",
+                  execution_mode: command.execution_mode,
+                  idempotency_key: `execute:${task.id}:tool:${toolRound}`,
+                },
+                {
+                  onConflict: "mission_id,idempotency_key",
+                },
+              );
+
+              if (continuationError) {
+                throw new Error(continuationError.message);
+              }
+
+              await this.db
+                .from("tasks")
+                .update({
+                  status: "queued",
+                  claimed_by_run_id: null,
+                  claimed_at: null,
+                  started_at: null,
+                })
+                .eq("id", task.id);
+
+              await this.setAgentStatus(worker.id, "WAITING");
+
+              await this.event(
+                mission,
+                "TOOL_RESULTS_READY",
+                `${worker.name} received ${runtimeToolResults.length} verified runtime tool result(s) for continuation.`,
+                {
+                  agentId: worker.id,
+                  taskId: task.id,
+                  payload: {
+                    toolRound,
+                    tools: runtimeToolResults.map((item) => item.toolId),
+                  },
+                },
+              );
+
+              return {
+                acted: true,
+                note:
+                  `runtime tools completed; ` + `agent continuation ${toolRound}/${maxToolRounds}`,
+              };
+            }
+          }
+        }
       }
     }
     if (!result) {
@@ -1741,7 +2126,7 @@ export class OrchestrationEngine {
       return { acted: true, note: "scope extension" };
     }
     if (result.status === "NEEDS_CLARIFICATION" && command && task.retries < task.max_retries) {
-      const manager = this.agent(worker.manager_agent_id);
+      const manager = this.managerOf(worker);
       if (manager) {
         const managerProvider = this.providerFor(manager);
         if (managerProvider.decide) {
@@ -1818,7 +2203,7 @@ export class OrchestrationEngine {
             });
             await this.recordUsage(mission, manager, decision.usage, task.id, "manager_decision");
             if (decision.escalationRequired || decision.decision === "ESCALATE") {
-              const leader = this.agent(manager.manager_agent_id);
+              const leader = this.managerOf(manager);
               const leaderProvider = leader ? this.providerFor(leader) : null;
               if (leader && leaderProvider?.decide) {
                 await this.event(mission, "ESCALATED", decision.summary, {
@@ -1971,7 +2356,7 @@ export class OrchestrationEngine {
             }
             await this.event(mission, "ESCALATED", `${manager.name}: ${decision.summary}`, {
               agentId: manager.id,
-              targetAgentId: manager.manager_agent_id,
+              targetAgentId: this.managerOf(manager)?.id ?? null,
               taskId: task.id,
             });
           } finally {
@@ -2003,7 +2388,7 @@ export class OrchestrationEngine {
           .eq("id", task.id);
         await this.authorizeDelegation(
           mission,
-          this.agent(worker.manager_agent_id) ?? commander,
+          this.managerOf(worker) ?? commander,
           worker,
           task.id,
         );
@@ -2012,7 +2397,7 @@ export class OrchestrationEngine {
             organization_id: mission.organization_id,
             mission_id: mission.id,
             task_id: task.id,
-            issued_by_agent_id: this.agent(worker.manager_agent_id)?.id ?? commander.id,
+            issued_by_agent_id: this.managerOf(worker)?.id ?? commander.id,
             assigned_to_agent_id: worker.id,
             objective: task.title,
             instructions: `${task.description}\n\nRetry ${retries}: previous attempt failed with "${resultSummary.slice(0, 200)}".`,
@@ -2091,7 +2476,7 @@ export class OrchestrationEngine {
       {
         agentId: worker.id,
         taskId: task.id,
-        targetAgentId: worker.manager_agent_id ?? commander.id,
+        targetAgentId: this.managerOf(worker)?.id ?? commander.id,
       },
     );
     return { acted: true, note: `collected ${task.code}` };
@@ -2099,7 +2484,7 @@ export class OrchestrationEngine {
 
   private async reviewTask(mission: Mission, commander: Agent, task: Task, _all: Task[]) {
     const worker = this.agent(task.assigned_agent_id) ?? commander;
-    const reviewer = this.agent(worker.manager_agent_id) ?? commander;
+    const reviewer = this.managerOf(worker) ?? commander;
     const provider = this.providerFor(reviewer);
     const evidence = (task.evidence as unknown as Evidence[]) ?? [];
     const { data: reviewCommand } = await this.db

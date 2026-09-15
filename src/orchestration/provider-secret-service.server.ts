@@ -89,3 +89,88 @@ export async function saveProviderSecrets(
   }
   return ref;
 }
+export async function deleteProviderSecrets(
+  providerId: string,
+  store = runtimeSecretStore(),
+): Promise<() => Promise<void>> {
+  const { data, error } = await localDbServer
+    .from("provider_secrets")
+    .select("provider_id,organization_id,secret_ref,api_key,bearer_token,secret_headers,updated_at")
+    .eq("provider_id", providerId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+
+  if (!data) {
+    return async () => undefined;
+  }
+
+  const row = data as SecretRow & {
+    organization_id: string;
+    updated_at: string;
+  };
+
+  let serialized: string | null = null;
+
+  if (row.secret_ref) {
+    const ref = { value: row.secret_ref };
+
+    serialized = await store.get(ref);
+
+    if (serialized === null) {
+      throw new Error("Provider secret reference exists but the vault entry is missing.");
+    }
+
+    await store.delete(ref);
+  }
+
+  const { error: deleteError } = await localDbServer
+    .from("provider_secrets")
+    .delete()
+    .eq("provider_id", providerId);
+
+  if (deleteError) {
+    if (serialized !== null) {
+      const restoredRef = await store.set(`provider:${providerId}`, serialized);
+
+      const restoreReference = await localDbServer
+        .from("provider_secrets")
+        .update({ secret_ref: restoredRef.value } as never)
+        .eq("provider_id", providerId);
+
+      if (restoreReference.error) {
+        throw new Error(
+          `Falha ao excluir a credencial (${deleteError.message}) e ao restaurar sua referência: ${restoreReference.error.message}`,
+        );
+      }
+    }
+
+    throw new Error(deleteError.message);
+  }
+
+  return async () => {
+    let secretRef = row.secret_ref;
+
+    if (serialized !== null) {
+      const restoredRef = await store.set(`provider:${providerId}`, serialized);
+      secretRef = restoredRef.value;
+    }
+
+    const { error: restoreError } = await localDbServer.from("provider_secrets").upsert(
+      {
+        provider_id: row.provider_id,
+        organization_id: row.organization_id,
+        secret_ref: secretRef,
+        api_key: row.api_key,
+        bearer_token: row.bearer_token,
+        secret_headers: row.secret_headers ?? {},
+        updated_at: row.updated_at,
+      } as never,
+      { onConflict: "provider_id" },
+    );
+
+    if (restoreError) {
+      throw new Error(restoreError.message);
+    }
+  };
+}

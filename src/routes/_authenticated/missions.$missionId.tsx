@@ -5,7 +5,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useOrg } from "@/lib/org-context";
 import { agentsQuery, missionDetailQuery, meetingMessagesQuery } from "@/lib/queries";
-import { startMission, stopMission } from "@/orchestration/mission.functions";
+import {
+  startMission,
+  stopMission,
+  pauseMission,
+  resumeMission,
+  retryMission,
+} from "@/orchestration/mission.functions";
 import {
   PageHeader,
   StatCard,
@@ -48,6 +54,9 @@ function MissionDetailPage() {
   const agents = useQuery(agentsQuery(org!.id));
   const start = useServerFn(startMission);
   const stop = useServerFn(stopMission);
+  const pause = useServerFn(pauseMission);
+  const resume = useServerFn(resumeMission);
+  const retry = useServerFn(retryMission);
   const [busy, setBusy] = useState(false);
 
   if (detail.isLoading)
@@ -61,6 +70,7 @@ function MissionDetailPage() {
   const byId = (id: string | null) => agents.data?.find((a) => a.id === id);
   const commander = byId(mission.commander_agent_id);
   const live = ["PLANNING", "RUNNING", "WAITING_APPROVAL", "REVIEWING"].includes(mission.status);
+  const paused = mission.status === "STOPPED" && mission.phase.startsWith("paused:");
   const pending = approvals.filter((a) => a.status === "PENDING");
   const done = tasks.filter((t) => t.status === "completed").length;
   const report = (mission.report ?? null) as null | {
@@ -114,13 +124,41 @@ function MissionDetailPage() {
               <Button
                 variant="outline"
                 disabled={busy}
+                onClick={() => act(() => pause({ data: { missionId } }), "Pausa solicitada")}
+              >
+                Pausar
+              </Button>
+            )}
+
+            {live && !mission.stop_requested && (
+              <Button
+                variant="outline"
+                disabled={busy}
                 onClick={() => act(() => stop({ data: { missionId } }), "Interrupção solicitada")}
               >
                 Parar
               </Button>
             )}
+
+            {paused && (
+              <Button
+                disabled={busy || org!.kill_switch_active}
+                onClick={() => act(() => resume({ data: { missionId } }), "Missão retomada")}
+              >
+                Continuar
+              </Button>
+            )}
+
+            {mission.status === "FAILED" && (
+              <Button
+                disabled={busy || org!.kill_switch_active}
+                onClick={() => act(() => retry({ data: { missionId } }), "Nova tentativa iniciada")}
+              >
+                Tentar novamente
+              </Button>
+            )}
             {mission.stop_requested && live && (
-              <span className="font-mono text-[10px] uppercase text-warning">parando…</span>
+              <span className="font-mono text-[10px] uppercase text-warning">pausando…</span>
             )}
           </>
         }

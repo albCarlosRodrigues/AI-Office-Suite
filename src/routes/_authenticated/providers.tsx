@@ -6,7 +6,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/lib/org-context";
 import { agentsQuery, providersQuery } from "@/lib/queries";
-import { saveProviderSecret, testProvider } from "@/orchestration/providers.functions";
+import {
+  deleteProvider,
+  saveProviderSecret,
+  testProvider,
+} from "@/orchestration/providers.functions";
 import { PageHeader, EmptyState, timeAgo } from "@/components/shared/PageHeader";
 import { StartupStatus } from "@/components/agents/StartupStatus";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -238,8 +242,10 @@ function ProviderDialog({ provider, trigger }: { provider?: AgentProvider; trigg
   const { org } = useOrg();
   const qc = useQueryClient();
   const save = useServerFn(saveProviderSecret);
+  const removeProvider = useServerFn(deleteProvider);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const cfg = (provider?.config ?? {}) as {
     kind?: string;
     backend?: string;
@@ -264,6 +270,47 @@ function ProviderDialog({ provider, trigger }: { provider?: AgentProvider; trigg
     bearer_token: "",
   });
   const meta = TYPES.find((t) => t.value === form.type)!;
+
+  const handleDelete = async () => {
+    if (!provider || !org) return;
+
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir o provedor "${provider.name}"?
+
+A credencial armazenada também será removida.
+Esta ação não pode ser desfeita.`,
+    );
+
+    if (!confirmed) return;
+
+    setDeleting(true);
+
+    try {
+      await removeProvider({
+        data: {
+          providerId: provider.id,
+          organizationId: org.id,
+        },
+      });
+
+      toast.success("Provedor excluído", {
+        description: `"${provider.name}" e suas credenciais foram removidos.`,
+      });
+
+      setOpen(false);
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["providers", org.id] }),
+        qc.invalidateQueries({ queryKey: ["agents", org.id] }),
+      ]);
+    } catch (err) {
+      toast.error("Não foi possível excluir o provedor", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -528,8 +575,20 @@ function ProviderDialog({ provider, trigger }: { provider?: AgentProvider; trigg
           <p className="text-[11px] text-muted-foreground">
             Credentials are written to a server-only vault table. The browser never reads them back.
           </p>
-          <div className="flex justify-end">
-            <Button type="submit" disabled={busy}>
+          <div
+            className={provider ? "flex items-center justify-between gap-3" : "flex justify-end"}
+          >
+            {provider && (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={busy || deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? "Excluindo…" : "Excluir provedor"}
+              </Button>
+            )}
+            <Button type="submit" disabled={busy || deleting}>
               {busy ? "Salvando…" : "Salvar provedor"}
             </Button>
           </div>

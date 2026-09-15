@@ -1,5 +1,6 @@
 import type { ProviderType, ProviderHealth } from "@/types/domain";
 import { z } from "zod";
+import { TOOL_MAP } from "../tools/catalog";
 import type {
   AgentProvider,
   ExecInput,
@@ -237,9 +238,21 @@ export class OpenAiCompatProvider implements AgentProvider {
 
   async executeTask(input: ExecInput, signal?: AbortSignal): Promise<WorkerResponse> {
     const c = input.command;
+    const toolContracts = c.allowedTools.flatMap((toolId) => {
+      const definition = TOOL_MAP[toolId];
+      if (!definition) return [];
+      return [
+        {
+          toolId,
+          description: definition.description,
+          inputSchema: definition.inputSchema,
+          requiredPermissions: definition.requiredPermissions,
+        },
+      ];
+    });
     const { text, usage } = await this.chat(
       input.systemPrompt,
-      `FORMAL COMMAND ${c.id}\nObjective: ${c.objective}\nInstructions: ${c.instructions}\nExpected output: ${c.expectedOutput}\nAcceptance criteria: ${JSON.stringify(c.acceptanceCriteria)}\nAllowed tools: ${c.allowedTools.join(", ") || "none"}\nForbidden: ${c.forbiddenActions.join(", ") || "none"}\nConstraints: ${JSON.stringify(c.constraints)}\nContext: ${JSON.stringify(c.context)}\n\nYou do not have live tool access. Tool calls are REQUESTS only: never claim they ran and never fabricate output. Respond with JSON only: {"status": COMPLETED|FAILED|BLOCKED|NEEDS_CLARIFICATION|REQUEST_PERMISSION|REQUEST_SCOPE_EXTENSION, "summary": string, "evidence": [{"type": text|code_diff|command_output|test_result|web_reference|file_reference, "title": string, "content": string}], "toolCalls": [{"toolId": string, "input": string, "arguments": object}], "clarification"?: string, "scopeExtension"?: {"requestedAction": string, "reason": string, "risk": LOW|MEDIUM|HIGH|CRITICAL, "requiredPermissions": [string]}}`,
+      `FORMAL COMMAND ${c.id}\nObjective: ${c.objective}\nInstructions: ${c.instructions}\nExpected output: ${c.expectedOutput}\nAcceptance criteria: ${JSON.stringify(c.acceptanceCriteria)}\nAllowed tools: ${c.allowedTools.join(", ") || "none"}\nTool contracts: ${JSON.stringify(toolContracts)}\nTool-call rules: toolId MUST be exactly one of the allowed tool ids. Every toolCalls item MUST contain an arguments object matching that tool's inputSchema. Never put executable parameters only in input. If Context contains runtimeToolResults, those are verified outputs from the local runtime: use them to continue reasoning and return COMPLETED without another tool call when they satisfy the acceptance criteria. Never return BLOCKED without at least one executable tool request.\nForbidden: ${c.forbiddenActions.join(", ") || "none"}\nConstraints: ${JSON.stringify(c.constraints)}\nContext: ${JSON.stringify(c.context)}\n\nYou do not have live tool access. Tool calls are REQUESTS only: never claim they ran and never fabricate output. Respond with JSON only: {"status": COMPLETED|FAILED|BLOCKED|NEEDS_CLARIFICATION|REQUEST_PERMISSION|REQUEST_SCOPE_EXTENSION, "summary": string, "evidence": [{"type": text|code_diff|command_output|test_result|web_reference|file_reference, "title": string, "content": string}], "toolCalls": [{"toolId": string, "input": string, "arguments": object}], "clarification"?: string, "scopeExtension"?: {"requestedAction": string, "reason": string, "risk": LOW|MEDIUM|HIGH|CRITICAL, "requiredPermissions": [string]}}`,
       true,
       signal,
       {

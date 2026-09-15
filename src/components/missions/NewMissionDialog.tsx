@@ -64,6 +64,8 @@ export function NewMissionDialog({
   const [open, setOpen] = useState(defaultOpen);
   const [title, setTitle] = useState("");
   const [goal, setGoal] = useState("");
+  const [repository, setRepository] = useState("");
+  const [workspace, setWorkspace] = useState("");
   const [commander, setCommander] = useState<string>("");
   const [budget, setBudget] = useState(String(settings?.max_mission_cost ?? 5));
   const [maxSteps, setMaxSteps] = useState(String(settings?.max_steps ?? 60));
@@ -84,7 +86,11 @@ export function NewMissionDialog({
 
   const billing = useMemo(() => {
     if (org?.simulation_mode) {
-      return { usesMoney: false, hasPlanQuota: false, description: "Execução simulada/local: sem cobrança monetária." };
+      return {
+        usesMoney: false,
+        hasPlanQuota: false,
+        description: "Execução simulada/local: sem cobrança monetária.",
+      };
     }
 
     const relevantAgents = selected.size
@@ -92,7 +98,11 @@ export function NewMissionDialog({
       : agents.filter((agent) => !agent.is_suspended);
 
     if (!relevantAgents.length || !providers.length) {
-      return { usesMoney: true, hasPlanQuota: false, description: "Orçamento monetário disponível para provedores medidos por uso." };
+      return {
+        usesMoney: true,
+        hasPlanQuota: false,
+        description: "Orçamento monetário disponível para provedores medidos por uso.",
+      };
     }
 
     const modes = relevantAgents.map((agent) =>
@@ -130,6 +140,10 @@ export function NewMissionDialog({
           organization_id: org.id,
           title: title.trim(),
           goal: goal.trim(),
+          mission_contract: {
+            repository: repository.trim() || null,
+            workspace: workspace.trim() || null,
+          },
           commander_agent_id: effectiveCommander,
           budget: billing.usesMoney ? Number(budget) || 0 : 0,
           max_steps: Number(maxSteps) || 60,
@@ -153,6 +167,8 @@ export function NewMissionDialog({
       setOpen(false);
       setTitle("");
       setGoal("");
+      setRepository("");
+      setWorkspace("");
       setSelected(new Set());
       navigate({ to: "/missions/$missionId", params: { missionId: data.id } });
     } catch (err) {
@@ -211,6 +227,29 @@ export function NewMissionDialog({
               rows={4}
               placeholder="Descreva o resultado, os critérios de sucesso e os limites."
             />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="m-repository">Repositório GitHub</Label>
+
+              <Input
+                id="m-repository"
+                value={repository}
+                onChange={(event) => setRepository(event.target.value)}
+                placeholder="owner/repository"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="m-workspace">Workspace local</Label>
+
+              <Input
+                id="m-workspace"
+                value={workspace}
+                onChange={(event) => setWorkspace(event.target.value)}
+                placeholder="A:\Ambiente\Projeto"
+              />
+            </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5 sm:col-span-1">

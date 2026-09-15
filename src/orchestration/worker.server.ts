@@ -10,6 +10,24 @@ import { runDurableToolWorker } from "./durable-tool-worker.server";
 
 const ACTIVE_STATUSES = ["PLANNING", "RUNNING", "WAITING_APPROVAL", "REVIEWING"] as const;
 
+const PENDING_RUNTIME_TOOL_STATUSES = new Set([
+  "REQUESTED",
+  "WAITING_APPROVAL",
+  "READY",
+  "CLAIMED",
+  "RUNNING",
+]);
+
+export function missionHasPendingRuntimeTools(
+  toolRequests: readonly { missionId: string; status: string }[],
+  missionId: string,
+) {
+  return toolRequests.some(
+    (request) =>
+      request.missionId === missionId && PENDING_RUNTIME_TOOL_STATUSES.has(request.status),
+  );
+}
+
 /** One bounded scheduler pass. Safe to invoke concurrently or retry. */
 export async function runOrchestrationWorker(limit = 20) {
   await new RecoveryService(runtimeDurableStore()).run();
@@ -22,7 +40,11 @@ export async function runOrchestrationWorker(limit = 20) {
     .limit(Math.max(1, Math.min(limit, 100)));
   if (error) throw new Error(error.message);
 
-  const missionRows = missions ?? [];
+  const durableState = await runtimeDurableStore().snapshot();
+
+  const missionRows = (missions ?? []).filter(
+    ({ id }) => !missionHasPendingRuntimeTools(durableState.toolRequests, id),
+  );
   const outputs = new Map<string, { missionId: string; acted: boolean; note: string }>();
   const configuredConcurrency = Number(process.env["AI_OFFICE_GLOBAL_MAX_CONCURRENT_TASKS"] ?? 4);
   const globalMax = Math.max(

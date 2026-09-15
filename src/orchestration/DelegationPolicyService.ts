@@ -1,7 +1,16 @@
 import type { Agent, Mission, Organization, OrganizationSettings } from "@/types/domain";
+import {
+  effectiveManagerOf,
+  isOperationallyActive,
+  operationalChainOfCommand,
+} from "@/agents/hierarchy";
 
 export type CommandAuthority =
-  "DIRECT_MANAGER_ONLY" | "MANAGEMENT_CHAIN" | "EXECUTIVE_OVERRIDE" | "EXPLICIT_DELEGATION";
+  | "SELF_EXECUTION"
+  | "DIRECT_MANAGER_ONLY"
+  | "MANAGEMENT_CHAIN"
+  | "EXECUTIVE_OVERRIDE"
+  | "EXPLICIT_DELEGATION";
 
 export interface DelegationDecision {
   allowed: boolean;
@@ -35,22 +44,31 @@ export class DelegationPolicyService {
     ) {
       return this.deny("Issuer, target and mission must belong to the same organization.");
     }
-    if (issuer.is_suspended || ["OFFLINE", "PAUSED", "ERROR"].includes(issuer.status)) {
+    if (!isOperationallyActive(issuer)) {
       return this.deny("The issuer is not active.");
     }
-    if (target.is_suspended || ["OFFLINE", "PAUSED"].includes(target.status)) {
+    if (!isOperationallyActive(target)) {
       return this.deny("The target agent is not available.");
     }
-    if (issuer.id === target.id) return this.deny("An agent cannot delegate a command to itself.");
+    if (issuer.id === target.id) {
+      return {
+        allowed: true,
+        authority: "SELF_EXECUTION",
+        overrideUsed: false,
+        reason: "The agent is executing its own assigned work; no delegation is required.",
+      };
+    }
     if (issuer.autonomy_level < 3 || !input.issuerPermissions.includes("delegate_tasks")) {
       return this.deny("The issuer needs manager autonomy and delegate_tasks permission.");
     }
-    if (target.manager_agent_id === issuer.id) {
+    const effectiveManager = effectiveManagerOf(target.id, agents);
+
+    if (effectiveManager?.id === issuer.id) {
       return {
         allowed: true,
         authority: "DIRECT_MANAGER_ONLY",
         overrideUsed: false,
-        reason: "Direct manager relationship.",
+        reason: "Direct operational manager relationship.",
       };
     }
 
@@ -95,17 +113,9 @@ export class DelegationPolicyService {
   }
 
   private static distance(issuerId: string, targetId: string, agents: Agent[]): number {
-    const byId = new Map(agents.map((agent) => [agent.id, agent]));
-    let current = byId.get(targetId)?.manager_agent_id ?? null;
-    let depth = 1;
-    const seen = new Set<string>();
-    while (current && !seen.has(current)) {
-      if (current === issuerId) return depth;
-      seen.add(current);
-      current = byId.get(current)?.manager_agent_id ?? null;
-      depth += 1;
-    }
-    return -1;
+    const chain = operationalChainOfCommand(targetId, agents);
+    const index = chain.findIndex((agent) => agent.id === issuerId);
+    return index >= 0 ? index + 1 : -1;
   }
 
   private static deny(reason: string): DelegationDecision {

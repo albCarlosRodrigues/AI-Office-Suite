@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useOrg } from "@/lib/org-context";
 import { agentsQuery, departmentsQuery, providersQuery } from "@/lib/queries";
-import { buildHierarchy, type AgentNode } from "@/agents/hierarchy";
+import { buildOperationalHierarchy, type AgentNode } from "@/agents/hierarchy";
 import { PageHeader, EmptyState } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { AgentAvatar } from "@/components/shared/AgentAvatar";
@@ -31,14 +31,14 @@ function AgentsPage() {
   const agents = useQuery(agentsQuery(org!.id));
   const departments = useQuery(departmentsQuery(org!.id));
   const providers = useQuery(providersQuery(org!.id));
-  const tree = useMemo(() => buildHierarchy(agents.data ?? []), [agents.data]);
+  const tree = useMemo(() => buildOperationalHierarchy(agents.data ?? []), [agents.data]);
 
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
         eyebrow="Organizar"
         title="Agentes"
-        description="Agentes respondem a outros agentes. Ordens descem pela cadeia de comando e evidências retornam para revisão."
+        description="A hierarquia operacional funciona como uma pilha: agentes indisponíveis saem temporariamente da cadeia e retornam automaticamente quando reativados."
         actions={
           <AgentFormDialog
             agents={agents.data ?? []}

@@ -71,6 +71,26 @@ export class ToolExecutionWorker {
       const recoveredEffect = Boolean(result);
       result ??= await this.executor.execute(request, approved, distributed.controller.signal);
       this.crash("afterExecution");
+      // Retry verified FAILED tool results.
+      // Thrown failures already use the same
+      // DurableToolQueue.retry() path.
+      if (result.status === "FAILED") {
+        const failureMessage =
+          `Tool ${request.toolId} returned FAILED ` +
+          `(exitCode=${String(result.exitCode)}, stderr=${result.stderrArtifactRef ?? "none"})`;
+
+        await this.queue.retry(
+          request.toolCallId,
+          request.claimToken!,
+          request.claimVersion,
+          "tool_failed",
+          failureMessage,
+          true,
+          now,
+        );
+
+        return result;
+      }
       const resultId = randomUUID();
       await this.store.transaction((state) => {
         const current = state.toolRequests.find((item) => item.toolCallId === request.toolCallId);

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "tables": {
     "organizations": [
       {
@@ -479,6 +479,63 @@
         "seat_x": 29,
         "seat_y": 19,
         "properties": {}
+      },
+      {
+        "id": "2ab6622c-a52b-4ba0-80f0-0d624e2d227b",
+        "created_at": "2026-09-15T20:27:59.121Z",
+        "updated_at": "2026-09-15T20:27:59.121Z",
+        "assigned_agent_id": "2981be15-4a4e-45f8-a7bb-66e88a851606",
+        "status": "occupied",
+        "desk_kind": "desk",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "zone_id": "64642b48-c4c0-4fdc-ad5f-50bcf8e229af",
+        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
+        "name": "Codex Desk",
+        "x": 3,
+        "y": 4,
+        "seat_x": 3,
+        "seat_y": 6,
+        "properties": {}
+      },
+      {
+        "id": "ae75b8b6-15ab-4e29-9f21-de025bd16f8f",
+        "created_at": "2026-09-15T20:27:59.121Z",
+        "updated_at": "2026-09-15T20:27:59.121Z",
+        "assigned_agent_id": "fd8704d1-96dd-48a9-ad1b-722294bdf8be",
+        "status": "occupied",
+        "desk_kind": "desk",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "zone_id": "64642b48-c4c0-4fdc-ad5f-50bcf8e229af",
+        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
+        "name": "GPT Desk",
+        "x": 6,
+        "y": 4,
+        "seat_x": 6,
+        "seat_y": 6,
+        "properties": {}
+      },
+      {
+        "id": "069b5efc-2b98-4c05-b48e-cc925742687b",
+        "created_at": "2026-09-15T20:27:59.121Z",
+        "updated_at": "2026-09-15T20:27:59.121Z",
+        "assigned_agent_id": "b46a9d14-bc1d-4b42-b76a-f265dbd94b82",
+        "status": "occupied",
+        "desk_kind": "desk",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "office_map_id": "268423e2-1aaf-4b12-95b4-579a65c7cc2a",
+        "zone_id": "20e475da-e216-405e-9b26-a05a9857bc2b",
+        "department_id": "e6c8ad75-af5d-4c0a-a824-e57d2253955d",
+        "name": "Claudinho Desk",
+        "x": 20,
+        "y": 4,
+        "seat_x": 20,
+        "seat_y": 6,
+        "properties": {}
       }
     ],
     "agent_providers": [
@@ -501,7 +558,143 @@
       }
     ],
     "provider_secrets": [],
-    "agents": [],
+    "agents": [
+      {
+        "id": "2981be15-4a4e-45f8-a7bb-66e88a851606",
+        "created_at": "2026-09-15T20:27:59.121Z",
+        "updated_at": "2026-09-15T20:27:59.121Z",
+        "manager_agent_id": null,
+        "workstation_id": "2ab6622c-a52b-4ba0-80f0-0d624e2d227b",
+        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
+        "status": "IDLE",
+        "kind": "controller",
+        "model": "codex-leader",
+        "autonomy_level": 4,
+        "require_approval": false,
+        "is_primary_controller": true,
+        "is_suspended": false,
+        "capabilities": [
+          "delegate_tasks",
+          "approve_tasks",
+          "manage_agents",
+          "final_review"
+        ],
+        "allowed_tools": [
+          "repository_read"
+        ],
+        "external_config": {
+          "mode": "orchestrator",
+          "role": "leader"
+        },
+        "max_concurrent_tasks": 1,
+        "current_task_id": null,
+        "system_prompt": "You are Codex, Leader / CEO / Orchestrator.",
+        "description": "Líder global: cria missões, decide, delega e aceita o resultado consolidado.",
+        "character_sprite_id": "modern-adam",
+        "max_cost": 2,
+        "max_iterations": 10,
+        "context_limit": 32000,
+        "memory_enabled": true,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
+        "name": "Codex",
+        "slug": "codex",
+        "role": "Leader / CEO / Orchestrator",
+        "color": "#e0b35a"
+      },
+      {
+        "id": "fd8704d1-96dd-48a9-ad1b-722294bdf8be",
+        "created_at": "2026-09-15T20:27:59.121Z",
+        "updated_at": "2026-09-15T20:27:59.121Z",
+        "manager_agent_id": "2981be15-4a4e-45f8-a7bb-66e88a851606",
+        "workstation_id": "ae75b8b6-15ab-4e29-9f21-de025bd16f8f",
+        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
+        "status": "IDLE",
+        "kind": "llm",
+        "model": "chatgpt-session",
+        "autonomy_level": 3,
+        "require_approval": false,
+        "is_primary_controller": false,
+        "is_suspended": false,
+        "capabilities": [
+          "delegate_tasks",
+          "approve_tasks",
+          "code_analysis",
+          "review"
+        ],
+        "allowed_tools": [
+          "repository_read",
+          "testing"
+        ],
+        "external_config": {
+          "mode": "chatgpt-session",
+          "protocol": "mcp-style",
+          "apiRequired": false
+        },
+        "max_concurrent_tasks": 1,
+        "current_task_id": null,
+        "system_prompt": "You are GPT, Manager.",
+        "description": "Gerente inspirado no LocalAnt: decompõe, supervisiona, revisa e consolida.",
+        "character_sprite_id": "modern-alex",
+        "max_cost": 2,
+        "max_iterations": 10,
+        "context_limit": 32000,
+        "memory_enabled": true,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "department_id": "87dc889c-f8b7-4f65-88b3-0e86e7132838",
+        "name": "GPT",
+        "slug": "gpt",
+        "role": "Manager",
+        "color": "#5aa9e0"
+      },
+      {
+        "id": "b46a9d14-bc1d-4b42-b76a-f265dbd94b82",
+        "created_at": "2026-09-15T20:27:59.121Z",
+        "updated_at": "2026-09-15T20:27:59.121Z",
+        "manager_agent_id": "fd8704d1-96dd-48a9-ad1b-722294bdf8be",
+        "workstation_id": "069b5efc-2b98-4c05-b48e-cc925742687b",
+        "provider_id": "029613c8-2163-4b7f-aae3-fc28b033b5c8",
+        "status": "IDLE",
+        "kind": "external",
+        "model": "free-claude-worker",
+        "autonomy_level": 1,
+        "require_approval": false,
+        "is_primary_controller": false,
+        "is_suspended": false,
+        "capabilities": [
+          "repository_read",
+          "repository_write",
+          "shell",
+          "testing"
+        ],
+        "allowed_tools": [
+          "repository_read",
+          "repository_write",
+          "shell",
+          "testing"
+        ],
+        "external_config": {
+          "mode": "free-claude",
+          "protocol": "command",
+          "costClass": "cheap"
+        },
+        "max_concurrent_tasks": 1,
+        "current_task_id": null,
+        "system_prompt": "You are Claudinho, Worker / Executor.",
+        "description": "Executor operacional econômico inspirado no free-claude.",
+        "character_sprite_id": "modern-amelia",
+        "max_cost": 2,
+        "max_iterations": 10,
+        "context_limit": 32000,
+        "memory_enabled": true,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "department_id": "e6c8ad75-af5d-4c0a-a824-e57d2253955d",
+        "name": "Claudinho",
+        "slug": "claudinho",
+        "role": "Worker / Executor",
+        "color": "#f2b544"
+      }
+    ],
     "agent_permissions": [
       {
         "id": "528d42a1-95f3-4bd5-82e1-b81022288dfd",
@@ -766,6 +959,138 @@
         "permission": "git.commit",
         "granted": true,
         "always_allow": false
+      },
+      {
+        "id": "cbd3c86b-a302-404f-9682-3f2e866b8519",
+        "created_at": "2026-09-15T20:27:59.121Z",
+        "updated_at": "2026-09-15T20:27:59.121Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "2981be15-4a4e-45f8-a7bb-66e88a851606",
+        "permission": "delegate_tasks",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "3bcd35e2-eda1-469c-b967-243f2b2a6e0b",
+        "created_at": "2026-09-15T20:27:59.121Z",
+        "updated_at": "2026-09-15T20:27:59.121Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "2981be15-4a4e-45f8-a7bb-66e88a851606",
+        "permission": "approve_tasks",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "6b8eae78-8691-476e-a7b7-5fc04827a66a",
+        "created_at": "2026-09-15T20:27:59.121Z",
+        "updated_at": "2026-09-15T20:27:59.121Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "2981be15-4a4e-45f8-a7bb-66e88a851606",
+        "permission": "manage_agents",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "a3332bc9-3477-4cb1-be23-8b5cfe80821f",
+        "created_at": "2026-09-15T20:27:59.122Z",
+        "updated_at": "2026-09-15T20:27:59.122Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "2981be15-4a4e-45f8-a7bb-66e88a851606",
+        "permission": "repository.read",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "d5ec4c0b-ac17-4427-9860-e07f90894cf1",
+        "created_at": "2026-09-15T20:27:59.122Z",
+        "updated_at": "2026-09-15T20:27:59.122Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "fd8704d1-96dd-48a9-ad1b-722294bdf8be",
+        "permission": "delegate_tasks",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "a2e404b0-9a07-45b3-a507-51ef200d3bdd",
+        "created_at": "2026-09-15T20:27:59.122Z",
+        "updated_at": "2026-09-15T20:27:59.122Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "fd8704d1-96dd-48a9-ad1b-722294bdf8be",
+        "permission": "approve_tasks",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "a255f705-275c-457c-88f5-f4d1c93744cf",
+        "created_at": "2026-09-15T20:27:59.122Z",
+        "updated_at": "2026-09-15T20:27:59.122Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "fd8704d1-96dd-48a9-ad1b-722294bdf8be",
+        "permission": "repository.read",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "8fef607a-88bd-4cb2-a004-95eba614978e",
+        "created_at": "2026-09-15T20:27:59.122Z",
+        "updated_at": "2026-09-15T20:27:59.122Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "fd8704d1-96dd-48a9-ad1b-722294bdf8be",
+        "permission": "tests.execute",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "4d36a658-4f1b-4670-9b87-9470fe8dd5f6",
+        "created_at": "2026-09-15T20:27:59.122Z",
+        "updated_at": "2026-09-15T20:27:59.122Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "b46a9d14-bc1d-4b42-b76a-f265dbd94b82",
+        "permission": "repository.read",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "c51458e5-51d2-4c36-8ee9-bbf46a75bfa3",
+        "created_at": "2026-09-15T20:27:59.122Z",
+        "updated_at": "2026-09-15T20:27:59.122Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "b46a9d14-bc1d-4b42-b76a-f265dbd94b82",
+        "permission": "repository.write",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "2375299a-97ac-4007-bba5-132295a519e9",
+        "created_at": "2026-09-15T20:27:59.122Z",
+        "updated_at": "2026-09-15T20:27:59.122Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "b46a9d14-bc1d-4b42-b76a-f265dbd94b82",
+        "permission": "shell.execute",
+        "granted": true,
+        "always_allow": false
+      },
+      {
+        "id": "b10f706f-4c2f-4f08-a046-8c88d9b47cef",
+        "created_at": "2026-09-15T20:27:59.122Z",
+        "updated_at": "2026-09-15T20:27:59.122Z",
+        "granted_by": "00000000-0000-4000-8000-000000000001",
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "agent_id": "b46a9d14-bc1d-4b42-b76a-f265dbd94b82",
+        "permission": "tests.execute",
+        "granted": true,
+        "always_allow": false
       }
     ],
     "agent_tools": [
@@ -811,7 +1136,43 @@
       }
     ],
     "agent_memories": [],
-    "missions": [],
+    "missions": [
+      {
+        "id": "be0b6ac0-49d6-4c18-b1d0-6dad9fbb4afb",
+        "created_at": "2026-09-15T20:30:16.079Z",
+        "updated_at": "2026-09-15T20:30:16.079Z",
+        "status": "DRAFT",
+        "phase": "draft",
+        "budget": 0,
+        "spent": 0,
+        "total_cost": 0,
+        "total_tokens_in": 0,
+        "total_tokens_out": 0,
+        "max_steps": 60,
+        "current_step": 0,
+        "stop_requested": false,
+        "is_simulated": true,
+        "execution_mode": "SIMULATION",
+        "allowed_agent_ids": [
+          "fd8704d1-96dd-48a9-ad1b-722294bdf8be"
+        ],
+        "approval_policy": "policy",
+        "summary": null,
+        "final_report": null,
+        "report": null,
+        "result": null,
+        "error": null,
+        "error_message": null,
+        "started_at": null,
+        "completed_at": null,
+        "step_lock_id": null,
+        "step_locked_until": null,
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "title": "Resolver integralmente a issue #12",
+        "goal": "Resolver integralmente a issue #12\n\nResolver integralmente a issue #12 do repositório:\nhttps://github.com/albCarlosRodrigues/DeliciasDoRio/issues/12\n\nHierarquia:\nGPT Manager → Claudinho\n\nRegras obrigatórias:\n\n1. Leia primeiro a issue #12 e todos os comentários relacionados. A issue é a fonte de verdade.\n\n2. Leia as instruções relevantes do repositório, incluindo AGENTS.md, CONTRIBUTING, README e arquivos equivalentes, se existirem.\n\n3. Antes de modificar qualquer arquivo, faça uma análise inicial do código e identifique:\n- requisitos verificáveis;\n- arquivos provavelmente envolvidos;\n- testes relevantes;\n- riscos de regressão;\n- estado atual do git;\n- branch/HEAD;\n- alterações pré-existentes do usuário.\n\n4. Preserve todas as alterações já existentes no repositório que não pertençam à issue.\n\n5. O GPT Manager deve transformar a issue em requisitos verificáveis:\nREQ-1, REQ-2, ... REQ-N.\n\n6. O GPT Manager decide a estratégia técnica, decomposição, testes e critérios de conclusão.\n\n7. Antes de distribuir qualquer tarefa, o GPT Manager deve verificar:\n- quais ferramentas a tarefa exige;\n- quais permissões cada ferramenta exige;\n- quais agentes possuem todas as permissões necessárias.\n\n8. Uma tarefa só pode ser atribuída a um agente que possua todas as permissões necessárias para executá-la.\n\n9. Se o Claudinho não possuir todas as permissões exigidas pela tarefa, ela não deve ser atribuída a ele.\n\n10. Se o GPT Manager possuir as permissões necessárias e o Claudinho não possuir, o GPT Manager deve executar essa tarefa diretamente.\n\n11. Se uma tarefa puder ser dividida em subtarefas com requisitos de permissão diferentes, o GPT Manager pode dividi-la e atribuir cada parte apenas a agentes autorizados.\n\n12. Se nenhum agente possuir as permissões necessárias, a missão não deve falhar imediatamente:\n- registrar a limitação;\n- retornar ao chat;\n- solicitar a permissão, ferramenta ou intervenção necessária.\n\n13. O GPT Manager delega a implementação e verificações mecânicas ao Claudinho somente quando ele estiver autorizado a executá-las.\n\n14. Claudinho pode executar apenas ações cobertas pelas permissões que realmente possui.\n\n15. Claudinho não pode inventar requisitos, decisões técnicas ou ampliar o escopo por conta própria.\n\n16. Quando encontrar ambiguidade, falta de informação, falta de permissão ou decisão técnica necessária, Claudinho deve reportar ao GPT Manager.\n\n17. O GPT Manager deve revisar o código e as evidências reais produzidas pelo Claudinho antes de considerar qualquer requisito concluído.\n\n18. Não utilizar Codex nesta missão.\n\n19. Não executar:\n- git add;\n- git commit;\n- git push;\n- criação de PR;\n- merge;\n- fechamento da issue.\n\n20. Faça o menor patch possível que satisfaça completamente a issue.\n\n21. Nenhum requisito pode ser marcado como concluído apenas por auto-relato de um agente. Deve existir evidência real no código, teste ou comando executado.\n\n22. O workspace autorizado dos agentes deve apontar para o clone local correto do repositório DeliciasDoRio antes da execução.\n\n23. Para leitura da issue, utilizar a ferramenta github_issue_read com:\n- repository: albCarlosRodrigues/DeliciasDoRio\n- issue: 12\n\n24. Toda chamada de ferramenta deve fornecer explicitamente o objeto arguments exigido pelo contrato da ferramenta.\n\n25. Se uma ferramenta for solicitada, aguarde a execução real e utilize os resultados verificados retornados pelo runtime antes de concluir a etapa.\n\n26. Não declarar BLOCKED apenas porque uma ferramenta precisa ser executada. Solicite a ferramenta corretamente e aguarde o resultado.\n\n27. BLOCKED só é permitido quando existir um motivo externo e verificável que impeça o progresso, como:\n- permissão realmente ausente;\n- ferramenta realmente indisponível;\n- informação indispensável ausente;\n- erro externo não recuperável;\n- necessidade de intervenção humana.\n\nValidação final obrigatória:\n- testes relevantes;\n- lint, se disponível;\n- typecheck, se disponível;\n- build, se disponível;\n- git diff --check;\n- revisão do diff final;\n- checagem de todos os REQ definidos.\n\nSe algum comando não existir no projeto, registrar como:\nNOT_AVAILABLE\n\nNão inventar substitutos apenas para marcar a validação como concluída.\n\nAo finalizar, produzir um pacote de revisão contendo:\n- resumo do problema;\n- requisitos REQ-1...REQ-N;\n- arquivos modificados;\n- explicação da solução;\n- testes executados;\n- resultado de cada validação;\n- riscos ou pendências;\n- diff pronto para revisão.\n\nEstado final permitido:\n\nREADY_FOR_CODEX_REVIEW\n\nou\n\nBLOCKED: <motivo verificável>\n\nNão fazer commit, push, PR, merge ou fechamento da issue.",
+        "commander_agent_id": "2981be15-4a4e-45f8-a7bb-66e88a851606"
+      }
+    ],
     "mission_agents": [],
     "mission_events": [],
     "tasks": [],
@@ -839,6 +1200,19 @@
         "metadata": {},
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
         "action": "organization.created"
+      },
+      {
+        "id": "2a0f403b-e9d3-4c71-8040-5f1d5f2cfed7",
+        "created_at": "2026-09-15T20:27:59.122Z",
+        "updated_at": "2026-09-15T20:27:59.122Z",
+        "actor_user_id": "00000000-0000-4000-8000-000000000001",
+        "actor_agent_id": null,
+        "input_summary": null,
+        "output_summary": "Codex -> GPT -> Claudinho",
+        "risk_level": "LOW",
+        "metadata": {},
+        "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758",
+        "action": "agents.default_seeded"
       }
     ]
   }

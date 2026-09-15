@@ -21,7 +21,7 @@ export const TOOL_CATALOG: ToolDef[] = [
     description: "Lê arquivos do repositório conectado.",
     riskLevel: "LOW",
     requiredPermissions: ["repository.read"],
-    inputSchema: { path: "string" },
+    inputSchema: { path: "string (file or directory, relative to workspace)" },
     outputSchema: { content: "string" },
   },
   {
@@ -30,7 +30,11 @@ export const TOOL_CATALOG: ToolDef[] = [
     description: "Cria ou altera arquivos em uma branch.",
     riskLevel: "MEDIUM",
     requiredPermissions: ["repository.write"],
-    inputSchema: { path: "string", diff: "string" },
+    inputSchema: {
+      path: "string?",
+      content: "string? (full replacement content)",
+      patch: "string? (unified diff; alternative to path + content)",
+    },
     outputSchema: { changeset: "string" },
   },
   {
@@ -39,7 +43,7 @@ export const TOOL_CATALOG: ToolDef[] = [
     description: "Executa análise estática de um arquivo ou módulo.",
     riskLevel: "LOW",
     requiredPermissions: ["repository.read"],
-    inputSchema: { target: "string" },
+    inputSchema: { target: "string (file or directory relative to workspace)" },
     outputSchema: { findings: "array" },
   },
   {
@@ -48,7 +52,7 @@ export const TOOL_CATALOG: ToolDef[] = [
     description: "Executa um comando no ambiente isolado.",
     riskLevel: "HIGH",
     requiredPermissions: ["shell.execute"],
-    inputSchema: { command: "string" },
+    inputSchema: { argv: "string[]", cwd: "string?", timeoutMs: "number?" },
     outputSchema: { stdout: "string", exitCode: "number" },
   },
   {
@@ -57,7 +61,7 @@ export const TOOL_CATALOG: ToolDef[] = [
     description: "Executa todos os testes ou parte deles.",
     riskLevel: "LOW",
     requiredPermissions: ["tests.execute"],
-    inputSchema: { pattern: "string?" },
+    inputSchema: { args: "string[]?", cwd: "string?" },
     outputSchema: { passed: "number", failed: "number" },
   },
   {
@@ -66,7 +70,7 @@ export const TOOL_CATALOG: ToolDef[] = [
     description: "Lê issues sem permissão de alteração.",
     riskLevel: "LOW",
     requiredPermissions: ["github.issue.read"],
-    inputSchema: { issue: "number" },
+    inputSchema: { repository: "string owner/name", issue: "number" },
     outputSchema: { issue: "object" },
   },
   {
