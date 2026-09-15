@@ -1,0 +1,169 @@
+﻿Implemente uma alteração pontual na tela de edição de provedores do AI Office Suite.
+
+OBJETIVO
+
+No modal de edição de provedor — por exemplo o modal mostrado como:
+
+"Editar Claudinho — FreeClaude / OpenRouter"
+
+adicione um botão para excluir o provedor atual.
+
+REQUISITOS OBRIGATÓRIOS
+
+1. Localize primeiro o componente real responsável pelo modal de edição de provider.
+   Procure por textos existentes como:
+   - "Salvar provedor"
+   - "Editar Claudinho"
+   - "Backend de execução"
+   - "API key"
+
+2. NÃO crie um segundo modal se já existir um componente responsável por edição.
+
+3. No rodapé do modal, mantenha:
+   - botão "Excluir provedor" à esquerda;
+   - botão "Salvar provedor" à direita.
+
+Layout esperado:
+
+[ Excluir provedor ]                    [ Salvar provedor ]
+
+4. O botão "Excluir provedor":
+   - deve aparecer SOMENTE quando estiver editando um provider já persistido;
+   - não deve aparecer durante criação de um provider novo;
+   - deve usar variante visual destrutiva/vermelha compatível com o design system existente;
+   - deve mostrar estado "Excluindo..." enquanto a operação estiver em andamento;
+   - deve ficar desabilitado durante a exclusão.
+
+5. Ao clicar em "Excluir provedor", NÃO exclua imediatamente.
+
+Mostre uma confirmação contendo o nome do provider, equivalente a:
+
+Tem certeza que deseja excluir o provedor "NOME"?
+
+6. Antes de excluir, verifique se existem agentes configurados para utilizar esse provider.
+
+Se houver dependências:
+   - não deixe referências órfãs;
+   - mostre ao usuário quais agentes utilizam o provider;
+   - prefira bloquear a exclusão até que os agentes sejam alterados para outro provider.
+
+Não simplesmente faça cascade silencioso apagando agentes.
+
+7. A exclusão precisa atingir o backend real.
+
+Implemente/reutilize uma operação equivalente a:
+
+deleteProvider(providerId)
+
+Ela deve:
+
+   A. validar que o provider existe;
+   B. verificar dependências;
+   C. remover a credencial correspondente da tabela/vault server-side;
+   D. remover o registro do provider;
+   E. retornar erro apropriado caso algo falhe.
+
+8. Credenciais:
+
+O modal atualmente informa que credenciais são gravadas em uma server-only vault table.
+
+Portanto:
+
+   - o browser NÃO deve receber novamente a API key;
+   - não exponha segredo durante a exclusão;
+   - remova a credencial pelo identificador no servidor;
+   - preserve as políticas de segurança/RLS existentes.
+
+9. Depois de uma exclusão bem-sucedida:
+
+   - fechar o modal;
+   - atualizar imediatamente a lista de providers;
+   - remover o provider da UI sem precisar recarregar a página;
+   - mostrar feedback de sucesso.
+
+Exemplo:
+
+"Provedor excluído com sucesso."
+
+10. Em caso de falha:
+
+   - manter o modal aberto;
+   - restaurar o estado do botão;
+   - exibir erro legível;
+   - registrar erro técnico sem revelar API keys.
+
+11. Evite:
+
+   - window.location.reload();
+   - duplicação de queries;
+   - apagar provider somente no frontend;
+   - deixar credencial órfã;
+   - deixar agente referenciando provider inexistente;
+   - armazenar chave no client;
+   - hardcode de IDs.
+
+12. Preserve o comportamento atual de "Salvar provedor".
+
+Não introduza regressão no fluxo de criação/edição.
+
+13. Utilize componentes já existentes no projeto.
+
+Se já houver:
+   - Button destructive;
+   - AlertDialog;
+   - ConfirmDialog;
+   - toast;
+   - query invalidation;
+   - provider service/repository;
+
+reutilize-os em vez de criar implementações paralelas.
+
+14. Testes:
+
+Adicione/ajuste testes para provar pelo menos:
+
+TEST-1:
+provider existente mostra "Excluir provedor".
+
+TEST-2:
+novo provider NÃO mostra "Excluir provedor".
+
+TEST-3:
+cancelar confirmação não exclui nada.
+
+TEST-4:
+confirmar remove provider.
+
+TEST-5:
+provider utilizado por agente não deixa referência órfã.
+
+TEST-6:
+erro do backend mantém modal aberto.
+
+TEST-7:
+depois da exclusão a lista é atualizada.
+
+15. Antes de modificar:
+   - identifique os arquivos envolvidos;
+   - verifique o padrão arquitetural existente;
+   - não faça refatoração fora do escopo.
+
+16. Depois de modificar:
+   - rode typecheck;
+   - rode lint aplicável;
+   - rode testes relacionados;
+   - rode build.
+
+17. Ao finalizar, entregue um resumo contendo:
+
+FILES CHANGED
+BACKEND DELETE FLOW
+DEPENDENCY PROTECTION
+UI BEHAVIOR
+TESTS
+TYPECHECK
+BUILD
+RESULT
+
+Não faça commit, push ou PR.
+Faça apenas as alterações locais.
