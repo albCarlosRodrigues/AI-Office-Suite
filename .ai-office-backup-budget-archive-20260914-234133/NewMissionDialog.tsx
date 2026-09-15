@@ -5,10 +5,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/lib/org-context";
-import { agentsQuery, providersQuery } from "@/lib/queries";
+import { agentsQuery } from "@/lib/queries";
 import { startMission } from "@/orchestration/mission.functions";
 import { agentLevel } from "@/agents/hierarchy";
-import { providerBillingMode } from "@/orchestration/providers/billing";
 import {
   Dialog,
   DialogContent,
@@ -58,7 +57,6 @@ export function NewMissionDialog({
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data: agents = [] } = useQuery({ ...agentsQuery(orgId), enabled: !!orgId });
-  const { data: providers = [] } = useQuery({ ...providersQuery(orgId), enabled: !!orgId });
   const start = useServerFn(startMission);
 
   const [open, setOpen] = useState(defaultOpen);
@@ -82,36 +80,6 @@ export function NewMissionDialog({
   const defaultCommander = commanders.find((a) => a.is_primary_controller) ?? commanders[0];
   const effectiveCommander = commander || defaultCommander?.id || "";
 
-  const billing = useMemo(() => {
-    if (org?.simulation_mode) {
-      return { usesMoney: false, hasPlanQuota: false, description: "Execução simulada/local: sem cobrança monetária." };
-    }
-
-    const relevantAgents = selected.size
-      ? agents.filter((agent) => selected.has(agent.id) || agent.id === effectiveCommander)
-      : agents.filter((agent) => !agent.is_suspended);
-
-    if (!relevantAgents.length || !providers.length) {
-      return { usesMoney: true, hasPlanQuota: false, description: "Orçamento monetário disponível para provedores medidos por uso." };
-    }
-
-    const modes = relevantAgents.map((agent) =>
-      providerBillingMode(providers.find((provider) => provider.id === agent.provider_id)),
-    );
-    const usesMoney = modes.includes("METERED");
-    const hasPlanQuota = modes.includes("PLAN_QUOTA");
-
-    return {
-      usesMoney,
-      hasPlanQuota,
-      description: usesMoney
-        ? "Há pelo menos um provedor com cobrança por uso/token nesta missão."
-        : hasPlanQuota
-          ? "Sem cobrança por token: o limite é do plano/tempo/cota semanal do provedor."
-          : "Todos os provedores selecionados são gratuitos ou locais.",
-    };
-  }, [agents, effectiveCommander, org?.simulation_mode, providers, selected]);
-
   const toggle = (id: string) => {
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
@@ -131,7 +99,7 @@ export function NewMissionDialog({
           title: title.trim(),
           goal: goal.trim(),
           commander_agent_id: effectiveCommander,
-          budget: billing.usesMoney ? Number(budget) || 0 : 0,
+          budget: Number(budget) || 0,
           max_steps: Number(maxSteps) || 60,
           approval_policy: approvalPolicy,
           allowed_agent_ids: Array.from(selected),
@@ -235,13 +203,9 @@ export function NewMissionDialog({
                 type="number"
                 step="0.5"
                 min="0"
-                value={billing.usesMoney ? budget : "0"}
+                value={budget}
                 onChange={(e) => setBudget(e.target.value)}
-                disabled={!billing.usesMoney}
               />
-              <p className="text-[11px] leading-snug text-muted-foreground">
-                {billing.description}
-              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="m-steps">Máximo de etapas</Label>

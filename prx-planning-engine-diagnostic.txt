@@ -1,0 +1,1694 @@
+﻿
+========== PrxChatBackend ==========
+
+========== response.text ==========
+
+========== response.content ==========
+
+========== rationale ==========
+        .single();
+      if (error || !row) throw new Error("Failed to create task: " + error?.message);
+      codeToId.set(task.code, row.id);
+      taskContracts.push(taskContract);
+      index++;
+    }
+    const missionContract = MissionContractSchema.parse({
+      missionId: mission.id,
+      goal: mission.goal,
+      scope: [mission.title],
+      nonGoals: [],
+      constraints: this.policies.filter((policy) => policy.enforced).map((policy) => policy.rule),
+>>> 710:       globalDecisions: [plan.rationale || "Execute the validated task DAG"],
+      acceptanceCriteria: taskContracts.flatMap((contract) => contract.acceptanceCriteria),
+      taskContracts,
+      allowedTools: [...new Set(taskContracts.flatMap((contract) => contract.allowedTools))],
+      forbiddenActions: [
+        ...new Set(taskContracts.flatMap((contract) => contract.forbiddenActions)),
+      ],
+      tokenBudget: commander.context_limit,
+      costBudget: Number(mission.budget),
+      maxSteps: mission.max_steps,
+      maxEscalations: 2,
+      createdAt: new Date().toISOString(),
+      version: 1,
+      decompositionMode: assigned.length === 1 ? "single" : "partition",
+    });
+    await this.db
+      .from("missions")
+      .update({ mission_contract: missionContract as never })
+      .eq("id", mission.id);
+      const deps = task.dependsOn.map((c) => codeToId.get(c)).filter(Boolean) as string[];
+      await this.db.from("tasks").update({ depends_on: deps }).eq("id", taskId);
+      await this.issueCommand(mission, commander, agent, { id: taskId, ...task }, maxDepth);
+      await this.event(mission, "TASK_CREATED", `${task.code} "${task.title}" → ${agent.name}`, {
+        agentId: commander.id,
+        taskId,
+        targetAgentId: agent.id,
+      });
+    }
+    await this.event(
+      mission,
+      "PLAN_CREATED",
+>>> 744:       `${commander.name}: ${plan.rationale || `Plan with ${assigned.length} tasks created.`}`,
+      {
+        agentId: commander.id,
+        payload: { tasks: assigned.map((a) => ({ code: a.task.code, agent: a.agent.name })) },
+      },
+    );
+    await this.audit(mission, "mission.plan", {
+      agentId: commander.id,
+      output: `${assigned.length} tasks`,
+    });
+
+    // kick-off meeting if more than one participant
+    const participants = [...new Set([commander.id, ...assigned.map((a) => a.agent.id)])];
+    const maxRounds = Math.min(3, this.settings?.max_meeting_rounds ?? 3);
+    if (participants.length > 1 && maxRounds > 0) {
+      const { data: zone } = await this.db
+        .from("office_zones")
+        .select("id")
+        .eq("organization_id", mission.organization_id)
+
+========== tasks ==========
+  type WorkerResponse,
+} from "./providers/types";
+import {
+  buildAgentSystemPrompt,
+  buildCommandContext,
+  selectDependencyContext,
+} from "./ContextBuilder";
+import { subordinatesOf } from "@/agents/hierarchy";
+import { TOOL_MAP } from "./tools/catalog";
+import { RISK_ORDER } from "@/permissions/catalog";
+import { AgentCapabilityMatcher } from "./AgentCapabilityMatcher";
+import { DelegationPolicyService } from "./DelegationPolicyService";
+>>> 36: import { AgentStateService, MissionStateMachine, TaskStateMachine } from "./state-machines";
+import { MeetingService } from "./MeetingService";
+import { detectDeadlock, validateTaskDag } from "./dag-validator";
+import { parseMissionLease } from "./lease";
+import { MissionContractSchema, TaskContractSchema, type TaskContract } from "./contracts";
+import { enforceRuntimeEvidence } from "./tool-claims";
+import { redact } from "@/runtime/security/redaction";
+import { runtimeDurableStore } from "@/runtime/durable/store.server";
+import { DurableMissionRuntime } from "@/runtime/durable/mission-runtime.server";
+import { CancellationService } from "@/runtime/durable/cancellation-service.server";
+import { LocalAntExecutionAdapter } from "@/integrations/localant/adapter";
+import path from "node:path";
+import { FileArtifactStore } from "@/runtime/artifact-store.server";
+
+type DB = SupabaseClient<Database>;
+
+/**
+ * OrchestrationEngine — server-side, persisted, step-driven.
+ *
+    MissionStateMachine.assert(mission.status, status, "finish");
+    await this.db
+      .from("missions")
+      .update({
+        status,
+        phase: "done",
+        completed_at: new Date().toISOString(),
+        ...(status === "FAILED" ? { error: message } : {}),
+        ...extra,
+      } as never)
+      .eq("id", mission.id);
+    await this.db
+>>> 293:       .from("tasks")
+      .update({ status: "cancelled" })
+      .eq("mission_id", mission.id)
+      .in("status", ["queued", "running", "waiting"]);
+    await this.db
+      .from("commands")
+      .update({ status: "CANCELLED" })
+      .eq("mission_id", mission.id)
+      .in("status", ["PENDING", "ACCEPTED", "RUNNING"]);
+    await this.db
+      .from("approval_requests")
+      .update({ status: "EXPIRED" })
+      .eq("mission_id", mission.id)
+      .eq("status", "PENDING");
+    await this.releaseAgents(mission, status === "FAILED" ? "IDLE" : "IDLE");
+    await this.event(mission, `MISSION_${status}`, message, {
+      agentId: mission.commander_agent_id,
+    });
+    await this.audit(mission, `mission.${status.toLowerCase()}`, {
+      .single();
+    if (error || !mission) throw new Error("Mission not found");
+    await this.load(mission.organization_id);
+    if (this.org.kill_switch_active)
+      throw new Error("Kill switch is active. Deactivate it before starting missions.");
+    if (mission.status !== "DRAFT" && mission.status !== "STOPPED" && mission.status !== "FAILED")
+      throw new Error(`Mission is ${mission.status}`);
+    const commander = this.agent(mission.commander_agent_id);
+    if (!commander) throw new Error("Mission needs a commander agent");
+    if (commander.is_suspended) throw new Error(`${commander.name} is suspended`);
+    // restart semantics: wipe previous attempt
+    if (mission.status !== "DRAFT") {
+>>> 337:       await this.db.from("tasks").delete().eq("mission_id", mission.id);
+      await this.db.from("commands").delete().eq("mission_id", mission.id);
+    }
+    MissionStateMachine.assert(mission.status, "PLANNING", "start");
+    await this.db
+      .from("missions")
+      .update({
+        status: "PLANNING",
+        phase: "planning",
+        started_at: new Date().toISOString(),
+        completed_at: null,
+        current_step: 0,
+        error: null,
+        result: null,
+        summary: null,
+        report: null,
+        stop_requested: false,
+        is_simulated: this.org.simulation_mode,
+        execution_mode: this.org.simulation_mode ? "SIMULATION" : "REAL",
+    if (mission) {
+      await this.audit(mission, `approval.${decision.toLowerCase()}`, {
+        agentId: ar.agent_id,
+        taskId: ar.task_id,
+        tool: ar.tool_id,
+        input: ar.action,
+        output: note,
+        risk: ar.risk_level,
+        metadata: { scope, permissions: ar.required_permissions },
+      });
+      if (decision === "APPROVED") {
+        if (ar.task_id) {
+>>> 485:           await this.db.from("tasks").update({ status: "queued" }).eq("id", ar.task_id);
+          const { data: cmd } = await this.db
+            .from("commands")
+            .select("id, context")
+            .eq("task_id", ar.task_id)
+            .eq("status", "BLOCKED")
+            .maybeSingle();
+          if (cmd)
+            await this.db
+              .from("commands")
+              .update({
+                status: "PENDING",
+                context: {
+                  ...(cmd.context as Record<string, unknown>),
+                  approved: true,
+                  approval_id: ar.id,
+                } as never,
+              })
+              .eq("id", cmd.id);
+        }
+        if (agent) await this.setAgentStatus(agent.id, "WAITING");
+        await this.db.from("missions").update({ status: "RUNNING" }).eq("id", mission.id);
+        await this.event(
+          mission,
+          "APPROVAL_GRANTED",
+          `Human approved: ${ar.action} (${scope.toLowerCase()}).`,
+          { agentId: ar.agent_id, taskId: ar.task_id },
+        );
+      } else {
+        if (ar.task_id) {
+          await this.db
+>>> 516:             .from("tasks")
+            .update({
+              status: "blocked",
+              result: `Blocked: human denied "${ar.action}". ${note ?? ""}`,
+            })
+            .eq("id", ar.task_id);
+          await this.db
+            .from("commands")
+            .update({ status: "BLOCKED" })
+            .eq("task_id", ar.task_id)
+            .in("status", ["PENDING", "BLOCKED"]);
+        }
+        await this.event(mission, "APPROVAL_DENIED", `Human denied: ${ar.action}. ${note ?? ""}`, {
+          agentId: ar.agent_id,
+          taskId: ar.task_id,
+        });
+        await this.finish(
+          mission,
+          "FAILED",
+    const provider = this.providerFor(commander);
+    const plan = await provider.plan({
+      context: { missionId: mission.id, taskId: "planning", agentRunId: crypto.randomUUID() },
+      goal: mission.goal,
+      title: mission.title,
+      commander,
+      team,
+      policies: this.policies.filter((p) => p.enforced).map((p) => p.rule),
+      systemPrompt: this.systemPrompt(commander),
+    });
+    await this.recordUsage(mission, commander, plan.usage, null, "plan");
+
+>>> 648:     const dag = validateTaskDag(plan.tasks);
+    if (!dag.valid) throw new Error(`INVALID_TASK_DAG: ${dag.errors.join(", ")}`);
+
+    const maxDepth = this.settings?.max_delegation_depth ?? 3;
+    const assigned = this.assignTasks(plan.tasks, team);
+    const codeToId = new Map<string, string>();
+    const taskContracts: TaskContract[] = [];
+    let index = 0;
+    for (const { task, agent } of assigned) {
+      const taskId = crypto.randomUUID();
+      const taskContract = TaskContractSchema.parse({
+        taskId,
+        taskCode: task.code,
+        objective: task.description || task.title,
+        dependencies: task.dependsOn,
+        acceptanceCriteria: task.acceptanceCriteria.map((description, criterionIndex) => ({
+          id: `${task.code}-AC-${criterionIndex + 1}`,
+          description,
+        })),
+      title: mission.title,
+      commander,
+      team,
+      policies: this.policies.filter((p) => p.enforced).map((p) => p.rule),
+      systemPrompt: this.systemPrompt(commander),
+    });
+    await this.recordUsage(mission, commander, plan.usage, null, "plan");
+
+    const dag = validateTaskDag(plan.tasks);
+    if (!dag.valid) throw new Error(`INVALID_TASK_DAG: ${dag.errors.join(", ")}`);
+
+    const maxDepth = this.settings?.max_delegation_depth ?? 3;
+>>> 652:     const assigned = this.assignTasks(plan.tasks, team);
+    const codeToId = new Map<string, string>();
+    const taskContracts: TaskContract[] = [];
+    let index = 0;
+    for (const { task, agent } of assigned) {
+      const taskId = crypto.randomUUID();
+      const taskContract = TaskContractSchema.parse({
+        taskId,
+        taskCode: task.code,
+        objective: task.description || task.title,
+        dependencies: task.dependsOn,
+        acceptanceCriteria: task.acceptanceCriteria.map((description, criterionIndex) => ({
+          id: `${task.code}-AC-${criterionIndex + 1}`,
+          description,
+        })),
+        expectedArtifacts: [task.expectedOutput],
+        allowedTools: task.tools,
+        forbiddenActions: this.policies
+          .filter((policy) => policy.enforced && /never|não|forbid|prohib/i.test(policy.rule))
+        expectedArtifacts: [task.expectedOutput],
+        allowedTools: task.tools,
+        forbiddenActions: this.policies
+          .filter((policy) => policy.enforced && /never|não|forbid|prohib/i.test(policy.rule))
+          .map((policy) => policy.rule),
+        maxAttempts: 3,
+        tokenBudget: Math.max(1, Math.floor(commander.context_limit / assigned.length)),
+        costBudget: Number(mission.budget) / assigned.length,
+        modelTier: "TIER_1",
+        executionMode: mission.is_simulated ? "SIMULATION" : "REAL",
+      });
+      const { data: row, error } = await this.db
+>>> 679:         .from("tasks")
+        .insert({
+          id: taskId,
+          organization_id: mission.organization_id,
+          mission_id: mission.id,
+          assigned_agent_id: agent.id,
+          created_by_agent_id: commander.id,
+          code: task.code,
+          title: task.title,
+          description: task.description,
+          status: "queued",
+          depends_on: [],
+          priority: index,
+          order_index: index,
+          max_retries: 2,
+          evidence: [],
+          task_contract: taskContract as never,
+        })
+        .select("*")
+      createdAt: new Date().toISOString(),
+      version: 1,
+      decompositionMode: assigned.length === 1 ? "single" : "partition",
+    });
+    await this.db
+      .from("missions")
+      .update({ mission_contract: missionContract as never })
+      .eq("id", mission.id);
+    // dependencies + formal commands (with chain of command)
+    for (const { task, agent } of assigned) {
+      const taskId = codeToId.get(task.code)!;
+      const deps = task.dependsOn.map((c) => codeToId.get(c)).filter(Boolean) as string[];
+>>> 733:       await this.db.from("tasks").update({ depends_on: deps }).eq("id", taskId);
+      await this.issueCommand(mission, commander, agent, { id: taskId, ...task }, maxDepth);
+      await this.event(mission, "TASK_CREATED", `${task.code} "${task.title}" → ${agent.name}`, {
+        agentId: commander.id,
+        taskId,
+        targetAgentId: agent.id,
+      });
+    }
+    await this.event(
+      mission,
+      "PLAN_CREATED",
+      `${commander.name}: ${plan.rationale || `Plan with ${assigned.length} tasks created.`}`,
+      {
+        agentId: commander.id,
+        payload: { tasks: assigned.map((a) => ({ code: a.task.code, agent: a.agent.name })) },
+      },
+    );
+    await this.audit(mission, "mission.plan", {
+      agentId: commander.id,
+      const deps = task.dependsOn.map((c) => codeToId.get(c)).filter(Boolean) as string[];
+      await this.db.from("tasks").update({ depends_on: deps }).eq("id", taskId);
+      await this.issueCommand(mission, commander, agent, { id: taskId, ...task }, maxDepth);
+      await this.event(mission, "TASK_CREATED", `${task.code} "${task.title}" → ${agent.name}`, {
+        agentId: commander.id,
+        taskId,
+        targetAgentId: agent.id,
+      });
+    }
+    await this.event(
+      mission,
+      "PLAN_CREATED",
+>>> 744:       `${commander.name}: ${plan.rationale || `Plan with ${assigned.length} tasks created.`}`,
+      {
+        agentId: commander.id,
+        payload: { tasks: assigned.map((a) => ({ code: a.task.code, agent: a.agent.name })) },
+      },
+    );
+    await this.audit(mission, "mission.plan", {
+      agentId: commander.id,
+      output: `${assigned.length} tasks`,
+    });
+
+    // kick-off meeting if more than one participant
+    const participants = [...new Set([commander.id, ...assigned.map((a) => a.agent.id)])];
+    const maxRounds = Math.min(3, this.settings?.max_meeting_rounds ?? 3);
+    if (participants.length > 1 && maxRounds > 0) {
+      const { data: zone } = await this.db
+        .from("office_zones")
+        .select("id")
+        .eq("organization_id", mission.organization_id)
+      await this.event(mission, "TASK_CREATED", `${task.code} "${task.title}" → ${agent.name}`, {
+        agentId: commander.id,
+        taskId,
+        targetAgentId: agent.id,
+      });
+    }
+    await this.event(
+      mission,
+      "PLAN_CREATED",
+      `${commander.name}: ${plan.rationale || `Plan with ${assigned.length} tasks created.`}`,
+      {
+        agentId: commander.id,
+>>> 747:         payload: { tasks: assigned.map((a) => ({ code: a.task.code, agent: a.agent.name })) },
+      },
+    );
+    await this.audit(mission, "mission.plan", {
+      agentId: commander.id,
+      output: `${assigned.length} tasks`,
+    });
+
+    // kick-off meeting if more than one participant
+    const participants = [...new Set([commander.id, ...assigned.map((a) => a.agent.id)])];
+    const maxRounds = Math.min(3, this.settings?.max_meeting_rounds ?? 3);
+    if (participants.length > 1 && maxRounds > 0) {
+      const { data: zone } = await this.db
+        .from("office_zones")
+        .select("id")
+        .eq("organization_id", mission.organization_id)
+        .eq("kind", "meeting_room")
+        .limit(1)
+        .maybeSingle();
+    }
+    await this.event(
+      mission,
+      "PLAN_CREATED",
+      `${commander.name}: ${plan.rationale || `Plan with ${assigned.length} tasks created.`}`,
+      {
+        agentId: commander.id,
+        payload: { tasks: assigned.map((a) => ({ code: a.task.code, agent: a.agent.name })) },
+      },
+    );
+    await this.audit(mission, "mission.plan", {
+      agentId: commander.id,
+>>> 752:       output: `${assigned.length} tasks`,
+    });
+
+    // kick-off meeting if more than one participant
+    const participants = [...new Set([commander.id, ...assigned.map((a) => a.agent.id)])];
+    const maxRounds = Math.min(3, this.settings?.max_meeting_rounds ?? 3);
+    if (participants.length > 1 && maxRounds > 0) {
+      const { data: zone } = await this.db
+        .from("office_zones")
+        .select("id")
+        .eq("organization_id", mission.organization_id)
+        .eq("kind", "meeting_room")
+        .limit(1)
+        .maybeSingle();
+      const meetingService = new MeetingService(this.db);
+      const meeting = await meetingService.createMeeting({
+        organizationId: mission.organization_id,
+        missionId: mission.id,
+        zoneId: zone?.id ?? null,
+        );
+        return { acted: true, note: "planned + meeting" };
+      }
+    }
+    await this.setAgentStatus(commander.id, "DELEGATING");
+    await this.db
+      .from("missions")
+      .update({ status: "RUNNING", phase: "executing" })
+      .eq("id", mission.id);
+    return { acted: true, note: "planned" };
+  }
+
+>>> 809:   private assignTasks(tasks: PlannedTask[], team: Agent[]): { task: PlannedTask; agent: Agent }[] {
+    const load = new Map<string, number>();
+    return tasks.map((task) => {
+      const agent = AgentCapabilityMatcher.select(task, team, {
+        departments: this.departments,
+        providers: this.providers,
+        permissions: this.permissions,
+        load,
+        simulationMode: this.org.simulation_mode,
+      });
+      if (!agent)
+        throw new Error(
+          `NO_ELIGIBLE_AGENT: no active subordinate has the capabilities and permissions for ${task.code}.`,
+        );
+      load.set(agent.id, (load.get(agent.id) ?? 0) + 1);
+      return { task, agent };
+    });
+  }
+
+      }
+    }
+    await this.setAgentStatus(commander.id, "DELEGATING");
+    await this.db
+      .from("missions")
+      .update({ status: "RUNNING", phase: "executing" })
+      .eq("id", mission.id);
+    return { acted: true, note: "planned" };
+  }
+
+  private assignTasks(tasks: PlannedTask[], team: Agent[]): { task: PlannedTask; agent: Agent }[] {
+    const load = new Map<string, number>();
+>>> 811:     return tasks.map((task) => {
+      const agent = AgentCapabilityMatcher.select(task, team, {
+        departments: this.departments,
+        providers: this.providers,
+        permissions: this.permissions,
+        load,
+        simulationMode: this.org.simulation_mode,
+      });
+      if (!agent)
+        throw new Error(
+          `NO_ELIGIBLE_AGENT: no active subordinate has the capabilities and permissions for ${task.code}.`,
+        );
+      load.set(agent.id, (load.get(agent.id) ?? 0) + 1);
+      return { task, agent };
+    });
+  }
+
+  private async issueCommand(
+    mission: Mission,
+  private async stepExecuting(mission: Mission) {
+    const commander = this.agent(mission.commander_agent_id)!;
+    const { data: pendingApprovals } = await this.db
+      .from("approval_requests")
+      .select("id")
+      .eq("mission_id", mission.id)
+      .eq("status", "PENDING");
+    if (pendingApprovals?.length) {
+      if (mission.status !== "WAITING_APPROVAL")
+        await this.db.from("missions").update({ status: "WAITING_APPROVAL" }).eq("id", mission.id);
+      return { acted: false, note: "waiting approval" };
+    }
+>>> 1079:     const { data: tasks } = await this.db
+      .from("tasks")
+      .select("*")
+      .eq("mission_id", mission.id)
+      .order("order_index");
+    const all = tasks ?? [];
+    const done = new Set(all.filter((t) => t.status === "completed").map((t) => t.id));
+
+    // 1) a task awaiting review: status 'waiting' whose latest command COMPLETED (blocked commands mean approval, handled above)
+    const waiting = all.filter((t) => t.status === "waiting");
+    for (const t of waiting) {
+      const { data: cmd } = await this.db
+        .from("commands")
+        .select("status")
+        .eq("task_id", t.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cmd?.status === "COMPLETED") return await this.reviewTask(mission, commander, t, all);
+    const commander = this.agent(mission.commander_agent_id)!;
+    const { data: pendingApprovals } = await this.db
+      .from("approval_requests")
+      .select("id")
+      .eq("mission_id", mission.id)
+      .eq("status", "PENDING");
+    if (pendingApprovals?.length) {
+      if (mission.status !== "WAITING_APPROVAL")
+        await this.db.from("missions").update({ status: "WAITING_APPROVAL" }).eq("id", mission.id);
+      return { acted: false, note: "waiting approval" };
+    }
+    const { data: tasks } = await this.db
+>>> 1080:       .from("tasks")
+      .select("*")
+      .eq("mission_id", mission.id)
+      .order("order_index");
+    const all = tasks ?? [];
+    const done = new Set(all.filter((t) => t.status === "completed").map((t) => t.id));
+
+    // 1) a task awaiting review: status 'waiting' whose latest command COMPLETED (blocked commands mean approval, handled above)
+    const waiting = all.filter((t) => t.status === "waiting");
+    for (const t of waiting) {
+      const { data: cmd } = await this.db
+        .from("commands")
+        .select("status")
+        .eq("task_id", t.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cmd?.status === "COMPLETED") return await this.reviewTask(mission, commander, t, all);
+    }
+      .eq("mission_id", mission.id)
+      .eq("status", "PENDING");
+    if (pendingApprovals?.length) {
+      if (mission.status !== "WAITING_APPROVAL")
+        await this.db.from("missions").update({ status: "WAITING_APPROVAL" }).eq("id", mission.id);
+      return { acted: false, note: "waiting approval" };
+    }
+    const { data: tasks } = await this.db
+      .from("tasks")
+      .select("*")
+      .eq("mission_id", mission.id)
+      .order("order_index");
+>>> 1084:     const all = tasks ?? [];
+    const done = new Set(all.filter((t) => t.status === "completed").map((t) => t.id));
+
+    // 1) a task awaiting review: status 'waiting' whose latest command COMPLETED (blocked commands mean approval, handled above)
+    const waiting = all.filter((t) => t.status === "waiting");
+    for (const t of waiting) {
+      const { data: cmd } = await this.db
+        .from("commands")
+        .select("status")
+        .eq("task_id", t.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cmd?.status === "COMPLETED") return await this.reviewTask(mission, commander, t, all);
+    }
+
+    // 2) a running task whose minimum work time elapsed → collect result
+    const running = all.find((t) => t.status === "running");
+    if (running) {
+    if (running) {
+      const started = running.started_at ? new Date(running.started_at).getTime() : Date.now();
+      const minMs = mission.is_simulated ? 6500 + running.order_index * 1500 : 0;
+      if (Date.now() - started < minMs) return { acted: false, note: "task in progress" };
+      return await this.collectTask(mission, commander, running, all);
+    }
+
+    // 3) start next eligible task
+    const eligible = all.filter(
+      (t) => t.status === "queued" && t.depends_on.every((d) => done.has(d)),
+    );
+    if (eligible.length) {
+>>> 1114:       const configured = Number(process.env["AI_OFFICE_MAX_CONCURRENT_TASKS_PER_MISSION"] ?? 2);
+      const concurrency = Math.max(1, Math.min(Number.isFinite(configured) ? configured : 2, 16));
+      const started = await Promise.all(
+        eligible.slice(0, concurrency).map((task) => this.startTask(mission, commander, task, all)),
+      );
+      return {
+        acted: started.some((result) => result.acted),
+        note: `started ${started.length} ready task(s)`,
+      };
+    }
+
+    // 4) nothing running/queued → finished or stuck
+    if (all.length && all.every((t) => t.status === "completed")) {
+      await this.db
+        .from("missions")
+        .update({ phase: "finalizing", status: "REVIEWING" })
+        .eq("id", mission.id);
+      await this.setAgentStatus(commander.id, "REVIEWING");
+      return { acted: true, note: "finalizing" };
+        .from("missions")
+        .update({ phase: "finalizing", status: "REVIEWING" })
+        .eq("id", mission.id);
+      await this.setAgentStatus(commander.id, "REVIEWING");
+      return { acted: true, note: "finalizing" };
+    }
+    const blocked = all.filter((t) => t.status === "blocked" || t.status === "failed");
+    if (blocked.length || !all.length) {
+      await this.finish(
+        mission,
+        "FAILED",
+        blocked.length
+>>> 1140:           ? `Tasks blocked/failed: ${blocked.map((t) => t.code).join(", ")}.`
+          : "No tasks were planned.",
+      );
+      return { acted: true, note: "failed" };
+    }
+    const codeById = new Map(all.map((task) => [task.id, task.code]));
+    const deadlock = detectDeadlock(
+      all.map((task) => ({
+        code: task.code,
+        status: task.status,
+        dependsOn: task.depends_on.map((id) => codeById.get(id) ?? `missing:${id}`),
+      })),
+    );
+    if (deadlock.deadlocked) {
+      await this.finish(mission, "FAILED", `DEADLOCK: ${deadlock.reasons.join(", ")}`);
+      return { acted: true, note: "deadlock" };
+    }
+    return { acted: false, note: "idle" };
+  }
+        .update({ phase: "finalizing", status: "REVIEWING" })
+        .eq("id", mission.id);
+      await this.setAgentStatus(commander.id, "REVIEWING");
+      return { acted: true, note: "finalizing" };
+    }
+    const blocked = all.filter((t) => t.status === "blocked" || t.status === "failed");
+    if (blocked.length || !all.length) {
+      await this.finish(
+        mission,
+        "FAILED",
+        blocked.length
+          ? `Tasks blocked/failed: ${blocked.map((t) => t.code).join(", ")}.`
+>>> 1141:           : "No tasks were planned.",
+      );
+      return { acted: true, note: "failed" };
+    }
+    const codeById = new Map(all.map((task) => [task.id, task.code]));
+    const deadlock = detectDeadlock(
+      all.map((task) => ({
+        code: task.code,
+        status: task.status,
+        dependsOn: task.depends_on.map((id) => codeById.get(id) ?? `missing:${id}`),
+      })),
+    );
+    if (deadlock.deadlocked) {
+      await this.finish(mission, "FAILED", `DEADLOCK: ${deadlock.reasons.join(", ")}`);
+      return { acted: true, note: "deadlock" };
+    }
+    return { acted: false, note: "idle" };
+  }
+
+          mission_id: mission.id,
+          task_id: task.id,
+          agent_id: worker.id,
+          action: gate.action,
+          tool_id: gate.toolId,
+          reason: gate.reason,
+          risk_level: gate.risk,
+          required_permissions: gate.permissions,
+          requested_action: { task: task.code, tools: command.allowed_tools } as never,
+          kind: "permission",
+          status: "PENDING",
+        });
+>>> 1191:         await this.db.from("tasks").update({ status: "waiting" }).eq("id", task.id);
+        await this.db.from("commands").update({ status: "BLOCKED" }).eq("id", command.id);
+        await this.db.from("missions").update({ status: "WAITING_APPROVAL" }).eq("id", mission.id);
+        await this.setAgentStatus(worker.id, "NEEDS_APPROVAL", {
+          current_mission_id: mission.id,
+          current_task_id: task.id,
+        });
+        await this.event(mission, "APPROVAL_REQUESTED", gate.action, {
+          agentId: worker.id,
+          taskId: task.id,
+          payload: { risk: gate.risk },
+        });
+        await this.audit(mission, "approval.request", {
+          agentId: worker.id,
+          taskId: task.id,
+          tool: gate.toolId,
+          input: gate.action,
+          risk: gate.risk,
+        });
+      .filter((t) => task.depends_on.includes(t.id))
+      .map((t) => ({ code: t.code, title: t.title, result: t.result }));
+    const ctx = {
+      ...(command.context as Record<string, unknown>),
+      inputs: selectDependencyContext(deps),
+      retry_feedback:
+        (task.evidence as unknown as Evidence[])
+          .filter((e) => e.type === "text" && e.title === "Review feedback")
+          .map((e) => e.content)
+          .slice(-1)[0] ?? null,
+    };
+
+>>> 1228:     TaskStateMachine.assert(task.status, "running", "claim");
+    const runId = crypto.randomUUID();
+    const claimedAt = new Date().toISOString();
+    const { data: claimed } = await this.db
+      .from("tasks")
+      .update({
+        status: "running",
+        started_at: claimedAt,
+        completed_at: null,
+        claimed_by_run_id: runId,
+        claimed_at: claimedAt,
+      })
+      .eq("id", task.id)
+      .eq("status", "queued")
+      .is("claimed_by_run_id", null)
+      .select("id")
+      .maybeSingle();
+    if (!claimed) return { acted: false, note: "task claimed by another worker" };
+    await this.db
+      inputs: selectDependencyContext(deps),
+      retry_feedback:
+        (task.evidence as unknown as Evidence[])
+          .filter((e) => e.type === "text" && e.title === "Review feedback")
+          .map((e) => e.content)
+          .slice(-1)[0] ?? null,
+    };
+
+    TaskStateMachine.assert(task.status, "running", "claim");
+    const runId = crypto.randomUUID();
+    const claimedAt = new Date().toISOString();
+    const { data: claimed } = await this.db
+>>> 1232:       .from("tasks")
+      .update({
+        status: "running",
+        started_at: claimedAt,
+        completed_at: null,
+        claimed_by_run_id: runId,
+        claimed_at: claimedAt,
+      })
+      .eq("id", task.id)
+      .eq("status", "queued")
+      .is("claimed_by_run_id", null)
+      .select("id")
+      .maybeSingle();
+    if (!claimed) return { acted: false, note: "task claimed by another worker" };
+    await this.db
+      .from("commands")
+      .update({ status: "RUNNING", started_at: new Date().toISOString(), context: ctx as never })
+      .eq("id", command.id);
+    await this.setAgentStatus(worker.id, "WORKING", {
+          .from("command_results")
+          .update({ status: "COMPLETED", summary: result.summary, evidence: result.evidence })
+          .eq("id", result.id);
+      }
+    }
+    if (!result) {
+      const claimAge = task.claimed_at
+        ? Date.now() - new Date(task.claimed_at).getTime()
+        : Number.POSITIVE_INFINITY;
+      if (claimAge < 180_000) return { acted: false, note: "claimed task still executing" };
+      const retries = task.retries + 1;
+      if (command && retries <= task.max_retries) {
+>>> 1558:         TaskStateMachine.assert(task.status, "queued", "RETRY");
+        await this.db
+          .from("tasks")
+          .update({
+            status: "queued",
+            retries,
+            claimed_by_run_id: null,
+            claimed_at: null,
+            started_at: null,
+            result: "Worker lease expired before a result was persisted; retrying safely.",
+          })
+          .eq("id", task.id);
+        await this.db
+          .from("commands")
+          .update({ status: "PENDING", started_at: null })
+          .eq("id", command.id);
+        await this.event(
+          mission,
+          "AGENT_RUN_FAILED",
+          .eq("id", result.id);
+      }
+    }
+    if (!result) {
+      const claimAge = task.claimed_at
+        ? Date.now() - new Date(task.claimed_at).getTime()
+        : Number.POSITIVE_INFINITY;
+      if (claimAge < 180_000) return { acted: false, note: "claimed task still executing" };
+      const retries = task.retries + 1;
+      if (command && retries <= task.max_retries) {
+        TaskStateMachine.assert(task.status, "queued", "RETRY");
+        await this.db
+>>> 1560:           .from("tasks")
+          .update({
+            status: "queued",
+            retries,
+            claimed_by_run_id: null,
+            claimed_at: null,
+            started_at: null,
+            result: "Worker lease expired before a result was persisted; retrying safely.",
+          })
+          .eq("id", task.id);
+        await this.db
+          .from("commands")
+          .update({ status: "PENDING", started_at: null })
+          .eq("id", command.id);
+        await this.event(
+          mission,
+          "AGENT_RUN_FAILED",
+          `${worker.name}'s run lease expired. ${task.code} was safely requeued (${retries}/${task.max_retries}).`,
+          { agentId: worker.id, taskId: task.id },
+          .from("commands")
+          .update({ status: "PENDING", started_at: null })
+          .eq("id", command.id);
+        await this.event(
+          mission,
+          "AGENT_RUN_FAILED",
+          `${worker.name}'s run lease expired. ${task.code} was safely requeued (${retries}/${task.max_retries}).`,
+          { agentId: worker.id, taskId: task.id },
+        );
+        return { acted: true, note: "stale run requeued" };
+      }
+      await this.db
+>>> 1583:         .from("tasks")
+        .update({ status: "failed", result: "Worker produced no result." })
+        .eq("id", task.id);
+      return { acted: true, note: "no result" };
+    }
+    const evidence = [
+      ...((task.evidence as unknown as Evidence[]) ?? []),
+      ...((result.evidence as unknown as Evidence[]) ?? []),
+    ];
+    const out = result.output as {
+      managerToolIds?: string[];
+      clarification?: string | null;
+      permissionRequest?: {
+        action: string;
+        reason: string;
+        risk: RiskLevel;
+        requiredPermissions: string[];
+      } | null;
+      scopeExtension?: {
+        mission_id: mission.id,
+        task_id: task.id,
+        agent_id: worker.id,
+        action: out.permissionRequest.action,
+        reason: out.permissionRequest.reason,
+        risk_level: out.permissionRequest.risk,
+        required_permissions: out.permissionRequest.requiredPermissions,
+        requested_action: out.permissionRequest as never,
+        kind: "permission",
+        status: "PENDING",
+      });
+      await this.db
+>>> 1623:         .from("tasks")
+        .update({ status: "waiting", evidence: evidence as never })
+        .eq("id", task.id);
+      if (command)
+        await this.db.from("commands").update({ status: "BLOCKED" }).eq("id", command.id);
+      await this.db.from("missions").update({ status: "WAITING_APPROVAL" }).eq("id", mission.id);
+      await this.setAgentStatus(worker.id, "NEEDS_APPROVAL");
+      await this.event(
+        mission,
+        "APPROVAL_REQUESTED",
+        `${worker.name}: ${out.permissionRequest.action}`,
+        { agentId: worker.id, taskId: task.id },
+      );
+      return { acted: true, note: "permission requested" };
+    }
+    if (result.status === "REQUEST_SCOPE_EXTENSION" && out.scopeExtension) {
+      await this.db.from("approval_requests").insert({
+        organization_id: mission.organization_id,
+        mission_id: mission.id,
+        mission_id: mission.id,
+        task_id: task.id,
+        agent_id: worker.id,
+        action: out.scopeExtension.requestedAction,
+        reason: out.scopeExtension.reason,
+        risk_level: out.scopeExtension.risk,
+        required_permissions: out.scopeExtension.requiredPermissions,
+        requested_action: out.scopeExtension as never,
+        kind: "scope_extension",
+        status: "PENDING",
+      });
+      await this.db
+>>> 1653:         .from("tasks")
+        .update({ status: "waiting", evidence: evidence as never })
+        .eq("id", task.id);
+      if (command)
+        await this.db.from("commands").update({ status: "BLOCKED" }).eq("id", command.id);
+      await this.db.from("missions").update({ status: "WAITING_APPROVAL" }).eq("id", mission.id);
+      await this.setAgentStatus(worker.id, "NEEDS_APPROVAL");
+      await this.event(
+        mission,
+        "SCOPE_EXTENSION_REQUESTED",
+        `${worker.name}: ${out.scopeExtension.requestedAction} — ${out.scopeExtension.reason}`,
+        { agentId: worker.id, taskId: task.id },
+      );
+      return { acted: true, note: "scope extension" };
+    }
+    if (result.status === "NEEDS_CLARIFICATION" && command && task.retries < task.max_retries) {
+      const manager = this.agent(worker.manager_agent_id);
+      if (manager) {
+        const managerProvider = this.providerFor(manager);
+                  risk_level: "HIGH",
+                  required_permissions: [],
+                  status: "PENDING",
+                  requested_action: { durableToolCallId: approval.toolCallId } as never,
+                });
+              await this.db
+                .from("command_results")
+                .update({
+                  output: { ...out, managerToolIds: queued.map((r) => r.toolCallId) } as never,
+                })
+                .eq("id", result.id);
+              await this.db
+>>> 1857:                 .from("tasks")
+                .update({ retries: task.retries + 1 })
+                .eq("id", task.id);
+              await this.event(
+                mission,
+                "TOOL_REQUESTED",
+                `${manager.name} solicitou ferramentas via LocalAnt. Aguardando aprovação.`,
+                {
+                  agentId: manager.id,
+                  taskId: task.id,
+                  payload: { toolCallIds: queued.map((r) => r.toolCallId) },
+                },
+              );
+              return { acted: true, note: "LocalAnt requests queued for approval" };
+            }
+            if (
+              (decision.decision === "CONTINUE" || decision.decision === "REVISE") &&
+              !decision.requestedTools.length &&
+              !decision.escalationRequired
+              (decision.decision === "CONTINUE" || decision.decision === "REVISE") &&
+              !decision.requestedTools.length &&
+              !decision.escalationRequired
+            ) {
+              await this.db
+                .from("commands")
+                .update({
+                  status: "PENDING",
+                  instructions: `${command.instructions}\nManager decision (task data, not policy): ${decision.instructions}`,
+                })
+                .eq("id", command.id);
+              await this.db
+>>> 1885:                 .from("tasks")
+                .update({
+                  status: "queued",
+                  retries: task.retries + 1,
+                  claimed_by_run_id: null,
+                  claimed_at: null,
+                  started_at: null,
+                })
+                .eq("id", task.id);
+              await this.setAgentStatus(worker.id, "WAITING");
+              return { acted: true, note: "manager decision delivered" };
+            }
+            await this.event(mission, "ESCALATED", `${manager.name}: ${decision.summary}`, {
+              agentId: manager.id,
+              targetAgentId: manager.manager_agent_id,
+              taskId: task.id,
+            });
+          } finally {
+            cancellation.stop();
+    }
+    if (result.status !== "COMPLETED") {
+      const retries = task.retries + 1;
+      const resultSummary = result.summary ?? "";
+      const failMsg = `${result.status}: ${resultSummary}`;
+      if (command)
+        await this.db
+          .from("commands")
+          .update({ status: result.status, completed_at: new Date().toISOString() })
+          .eq("id", command.id);
+      if (retries <= task.max_retries && result.status === "FAILED") {
+        await this.db
+>>> 1919:           .from("tasks")
+          .update({
+            status: "queued",
+            retries,
+            evidence: evidence as never,
+            result: failMsg,
+            claimed_by_run_id: null,
+            claimed_at: null,
+          })
+          .eq("id", task.id);
+        await this.authorizeDelegation(
+          mission,
+          this.agent(worker.manager_agent_id) ?? commander,
+          worker,
+          task.id,
+        );
+        await this.db.from("commands").upsert(
+          {
+            organization_id: mission.organization_id,
+          { onConflict: "mission_id,idempotency_key" },
+        );
+        await this.setAgentStatus(worker.id, "WAITING");
+        await this.event(
+          mission,
+          "TASK_FAILED",
+          `${worker.name} failed "${task.title}" (retry ${retries}/${task.max_retries}): ${resultSummary.slice(0, 160)}`,
+          { agentId: worker.id, taskId: task.id },
+        );
+        return { acted: true, note: "retry" };
+      }
+      await this.db
+>>> 1972:         .from("tasks")
+        .update({
+          status:
+            result.status === "BLOCKED" || result.status === "NEEDS_CLARIFICATION"
+              ? "blocked"
+              : "failed",
+          retries,
+          evidence: evidence as never,
+          result: failMsg,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", task.id);
+      await this.setAgentStatus(worker.id, "ERROR");
+      await this.event(
+        mission,
+        "TASK_FAILED",
+        `${worker.name}: ${task.title} — ${failMsg.slice(0, 200)}`,
+        { agentId: worker.id, taskId: task.id },
+      );
+        .eq("id", task.id);
+      await this.setAgentStatus(worker.id, "ERROR");
+      await this.event(
+        mission,
+        "TASK_FAILED",
+        `${worker.name}: ${task.title} — ${failMsg.slice(0, 200)}`,
+        { agentId: worker.id, taskId: task.id },
+      );
+      return { acted: true, note: "task failed" };
+    }
+    // success → hand to reviewer
+    await this.db
+>>> 1995:       .from("tasks")
+      .update({
+        status: "waiting",
+        result: result.summary,
+        evidence: evidence as never,
+        tokens_in: Number(task.tokens_in) + Number(result.tokens_in),
+        tokens_out: Number(task.tokens_out) + Number(result.tokens_out),
+        cost: Number(task.cost) + Number(result.cost),
+      })
+      .eq("id", task.id);
+    if (command)
+      await this.db
+        .from("commands")
+        .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
+        .eq("id", command.id);
+    await this.setAgentStatus(worker.id, "WAITING");
+    await this.setAgentStatus(commander.id, "REVIEWING");
+    await this.event(
+      mission,
+        },
+        result: { summary: task.result ?? "", evidence },
+      });
+      decision = r.decision;
+      feedback = r.feedback;
+      await this.recordUsage(mission, reviewer, r.usage, task.id, "review");
+    } catch (e) {
+      feedback = "Review failed: " + (e instanceof Error ? e.message : String(e));
+      decision = "REJECT";
+    }
+    if (decision === "APPROVE") {
+      await this.db
+>>> 2067:         .from("tasks")
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("id", task.id);
+      await this.setAgentStatus(worker.id, "IDLE", { current_task_id: null });
+      await this.setAgentStatus(commander.id, "DELEGATING");
+      await this.event(
+        mission,
+        "REVIEW_APPROVED",
+        `${reviewer.name} approved ${task.code}: ${feedback.slice(0, 200)}`,
+        { agentId: reviewer.id, taskId: task.id, targetAgentId: worker.id },
+      );
+      await this.audit(mission, "task.approve", {
+        agentId: reviewer.id,
+        taskId: task.id,
+        output: feedback.slice(0, 300),
+      });
+      return { acted: true, note: `approved ${task.code}` };
+    }
+    const retries = task.retries + 1;
+        taskId: task.id,
+        output: feedback.slice(0, 300),
+      });
+      return { acted: true, note: `approved ${task.code}` };
+    }
+    const retries = task.retries + 1;
+    const newEvidence = [
+      ...evidence,
+      { type: "text", title: "Review feedback", content: feedback } as Evidence,
+    ];
+    if (decision === "REJECT" || retries > task.max_retries) {
+      await this.db
+>>> 2092:         .from("tasks")
+        .update({
+          status: "failed",
+          retries,
+          evidence: newEvidence as never,
+          result: `Rejected by ${reviewer.name}: ${feedback}`,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", task.id);
+      await this.setAgentStatus(worker.id, "ERROR");
+      await this.event(
+        mission,
+        "TASK_FAILED",
+        `${reviewer.name} rejected ${task.code}: ${feedback.slice(0, 200)}`,
+        { agentId: reviewer.id, taskId: task.id, targetAgentId: worker.id },
+      );
+      return { acted: true, note: "rejected" };
+    }
+    await this.db
+        })
+        .eq("id", task.id);
+      await this.setAgentStatus(worker.id, "ERROR");
+      await this.event(
+        mission,
+        "TASK_FAILED",
+        `${reviewer.name} rejected ${task.code}: ${feedback.slice(0, 200)}`,
+        { agentId: reviewer.id, taskId: task.id, targetAgentId: worker.id },
+      );
+      return { acted: true, note: "rejected" };
+    }
+    await this.db
+>>> 2111:       .from("tasks")
+      .update({
+        status: "queued",
+        retries,
+        evidence: newEvidence as never,
+        started_at: null,
+        claimed_by_run_id: null,
+        claimed_at: null,
+      })
+      .eq("id", task.id);
+    const { data: prev } = await this.db
+      .from("commands")
+      .select("*")
+      .eq("task_id", task.id)
+      .eq("assigned_to_agent_id", worker.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    await this.authorizeDelegation(mission, reviewer, worker, task.id);
+      { agentId: reviewer.id, taskId: task.id, targetAgentId: worker.id },
+    );
+    await this.audit(mission, "task.revise", {
+      agentId: reviewer.id,
+      taskId: task.id,
+      output: feedback.slice(0, 300),
+    });
+    return { acted: true, note: `revision ${task.code}` };
+  }
+
+  private async stepFinalizing(mission: Mission) {
+    const commander = this.agent(mission.commander_agent_id)!;
+>>> 2174:     const { data: tasks } = await this.db
+      .from("tasks")
+      .select("*")
+      .eq("mission_id", mission.id)
+      .order("order_index");
+    const provider = this.providerFor(commander);
+    let summary: string;
+    try {
+      const s = await provider.summarize({
+        context: { missionId: mission.id, taskId: "summary", agentRunId: crypto.randomUUID() },
+        goal: mission.goal,
+        tasks: (tasks ?? []).map((t) => ({
+          code: t.code,
+          title: t.title,
+          status: t.status,
+          result: t.result,
+        })),
+        systemPrompt: this.systemPrompt(commander),
+      });
+    );
+    await this.audit(mission, "task.revise", {
+      agentId: reviewer.id,
+      taskId: task.id,
+      output: feedback.slice(0, 300),
+    });
+    return { acted: true, note: `revision ${task.code}` };
+  }
+
+  private async stepFinalizing(mission: Mission) {
+    const commander = this.agent(mission.commander_agent_id)!;
+    const { data: tasks } = await this.db
+>>> 2175:       .from("tasks")
+      .select("*")
+      .eq("mission_id", mission.id)
+      .order("order_index");
+    const provider = this.providerFor(commander);
+    let summary: string;
+    try {
+      const s = await provider.summarize({
+        context: { missionId: mission.id, taskId: "summary", agentRunId: crypto.randomUUID() },
+        goal: mission.goal,
+        tasks: (tasks ?? []).map((t) => ({
+          code: t.code,
+          title: t.title,
+          status: t.status,
+          result: t.result,
+        })),
+        systemPrompt: this.systemPrompt(commander),
+      });
+      summary = s.summary;
+    const commander = this.agent(mission.commander_agent_id)!;
+    const { data: tasks } = await this.db
+      .from("tasks")
+      .select("*")
+      .eq("mission_id", mission.id)
+      .order("order_index");
+    const provider = this.providerFor(commander);
+    let summary: string;
+    try {
+      const s = await provider.summarize({
+        context: { missionId: mission.id, taskId: "summary", agentRunId: crypto.randomUUID() },
+        goal: mission.goal,
+>>> 2185:         tasks: (tasks ?? []).map((t) => ({
+          code: t.code,
+          title: t.title,
+          status: t.status,
+          result: t.result,
+        })),
+        systemPrompt: this.systemPrompt(commander),
+      });
+      summary = s.summary;
+      await this.recordUsage(mission, commander, s.usage, null, "summarize");
+    } catch (e) {
+      summary = `Report unavailable (${e instanceof Error ? e.message : String(e)}). All tasks completed with evidence.`;
+    }
+    const report = {
+      goal: mission.goal,
+      simulated: mission.is_simulated,
+      tasks: (tasks ?? []).map((t) => ({
+        code: t.code,
+        title: t.title,
+        goal: mission.goal,
+        tasks: (tasks ?? []).map((t) => ({
+          code: t.code,
+          title: t.title,
+          status: t.status,
+          result: t.result,
+        })),
+        systemPrompt: this.systemPrompt(commander),
+      });
+      summary = s.summary;
+      await this.recordUsage(mission, commander, s.usage, null, "summarize");
+    } catch (e) {
+>>> 2196:       summary = `Report unavailable (${e instanceof Error ? e.message : String(e)}). All tasks completed with evidence.`;
+    }
+    const report = {
+      goal: mission.goal,
+      simulated: mission.is_simulated,
+      tasks: (tasks ?? []).map((t) => ({
+        code: t.code,
+        title: t.title,
+        status: t.status,
+        agent: this.agent(t.assigned_agent_id)?.name ?? null,
+        result: t.result,
+        evidence: t.evidence,
+        retries: t.retries,
+      })),
+      totals: {
+        cost: mission.total_cost,
+        tokensIn: mission.total_tokens_in,
+        tokensOut: mission.total_tokens_out,
+        steps: mission.current_step,
+          result: t.result,
+        })),
+        systemPrompt: this.systemPrompt(commander),
+      });
+      summary = s.summary;
+      await this.recordUsage(mission, commander, s.usage, null, "summarize");
+    } catch (e) {
+      summary = `Report unavailable (${e instanceof Error ? e.message : String(e)}). All tasks completed with evidence.`;
+    }
+    const report = {
+      goal: mission.goal,
+      simulated: mission.is_simulated,
+>>> 2201:       tasks: (tasks ?? []).map((t) => ({
+        code: t.code,
+        title: t.title,
+        status: t.status,
+        agent: this.agent(t.assigned_agent_id)?.name ?? null,
+        result: t.result,
+        evidence: t.evidence,
+        retries: t.retries,
+      })),
+      totals: {
+        cost: mission.total_cost,
+        tokensIn: mission.total_tokens_in,
+        tokensOut: mission.total_tokens_out,
+        steps: mission.current_step,
+      },
+    };
+    await this.finish(mission, "COMPLETED", `Mission completed. ${summary.slice(0, 160)}`, {
+      result: summary,
+      summary: summary.slice(0, 600),
+
+========== JSON.parse ==========
+
+========== PLANNING ==========
+import path from "node:path";
+import { FileArtifactStore } from "@/runtime/artifact-store.server";
+
+type DB = SupabaseClient<Database>;
+
+/**
+ * OrchestrationEngine — server-side, persisted, step-driven.
+ *
+ * Every call to `step()` advances ONE mission by one bounded unit of work and
+ * writes the result to the database. Nothing lives in memory between steps,
+ * so the engine is safe on stateless workers and every transition is auditable.
+ *
+>>> 59:  * Phases: created → planning → kickoff (meeting) → executing → finalizing → done
+ */
+export class OrchestrationEngine {
+  private org!: Organization;
+  private settings!: OrganizationSettings | null;
+  private agents: Agent[] = [];
+  private departments: Department[] = [];
+  private providers: ProviderRow[] = [];
+  private permissions: AgentPermission[] = [];
+  private secrets = new Map<string, ProviderSecrets>();
+  private policies: OrgPolicy[] = [];
+
+  constructor(
+    private db: DB,
+    private userId: string,
+    private env: { lovableApiKey?: string | undefined },
+    private loadSecrets: (providerIds: string[]) => Promise<Map<string, ProviderSecrets>>,
+  ) {}
+
+    if (this.org.kill_switch_active)
+      throw new Error("Kill switch is active. Deactivate it before starting missions.");
+    if (mission.status !== "DRAFT" && mission.status !== "STOPPED" && mission.status !== "FAILED")
+      throw new Error(`Mission is ${mission.status}`);
+    const commander = this.agent(mission.commander_agent_id);
+    if (!commander) throw new Error("Mission needs a commander agent");
+    if (commander.is_suspended) throw new Error(`${commander.name} is suspended`);
+    // restart semantics: wipe previous attempt
+    if (mission.status !== "DRAFT") {
+      await this.db.from("tasks").delete().eq("mission_id", mission.id);
+      await this.db.from("commands").delete().eq("mission_id", mission.id);
+    }
+>>> 340:     MissionStateMachine.assert(mission.status, "PLANNING", "start");
+    await this.db
+      .from("missions")
+      .update({
+        status: "PLANNING",
+        phase: "planning",
+        started_at: new Date().toISOString(),
+        completed_at: null,
+        current_step: 0,
+        error: null,
+        result: null,
+        summary: null,
+        report: null,
+        stop_requested: false,
+        is_simulated: this.org.simulation_mode,
+        execution_mode: this.org.simulation_mode ? "SIMULATION" : "REAL",
+      })
+      .eq("id", mission.id);
+    await this.setAgentStatus(commander.id, "THINKING", {
+    const commander = this.agent(mission.commander_agent_id);
+    if (!commander) throw new Error("Mission needs a commander agent");
+    if (commander.is_suspended) throw new Error(`${commander.name} is suspended`);
+    // restart semantics: wipe previous attempt
+    if (mission.status !== "DRAFT") {
+      await this.db.from("tasks").delete().eq("mission_id", mission.id);
+      await this.db.from("commands").delete().eq("mission_id", mission.id);
+    }
+    MissionStateMachine.assert(mission.status, "PLANNING", "start");
+    await this.db
+      .from("missions")
+      .update({
+>>> 344:         status: "PLANNING",
+        phase: "planning",
+        started_at: new Date().toISOString(),
+        completed_at: null,
+        current_step: 0,
+        error: null,
+        result: null,
+        summary: null,
+        report: null,
+        stop_requested: false,
+        is_simulated: this.org.simulation_mode,
+        execution_mode: this.org.simulation_mode ? "SIMULATION" : "REAL",
+      })
+      .eq("id", mission.id);
+    await this.setAgentStatus(commander.id, "THINKING", {
+      current_mission_id: mission.id,
+      current_task_id: null,
+    });
+    await this.event(
+    if (!commander) throw new Error("Mission needs a commander agent");
+    if (commander.is_suspended) throw new Error(`${commander.name} is suspended`);
+    // restart semantics: wipe previous attempt
+    if (mission.status !== "DRAFT") {
+      await this.db.from("tasks").delete().eq("mission_id", mission.id);
+      await this.db.from("commands").delete().eq("mission_id", mission.id);
+    }
+    MissionStateMachine.assert(mission.status, "PLANNING", "start");
+    await this.db
+      .from("missions")
+      .update({
+        status: "PLANNING",
+>>> 345:         phase: "planning",
+        started_at: new Date().toISOString(),
+        completed_at: null,
+        current_step: 0,
+        error: null,
+        result: null,
+        summary: null,
+        report: null,
+        stop_requested: false,
+        is_simulated: this.org.simulation_mode,
+        execution_mode: this.org.simulation_mode ? "SIMULATION" : "REAL",
+      })
+      .eq("id", mission.id);
+    await this.setAgentStatus(commander.id, "THINKING", {
+      current_mission_id: mission.id,
+      current_task_id: null,
+    });
+    await this.event(
+      mission,
+    await this.finish(mission, "STOPPED", "Mission stopped by the human operator.");
+    return { ok: true };
+  }
+
+  async killSwitch(orgId: string, active: boolean) {
+    await this.load(orgId);
+    await this.db.from("organizations").update({ kill_switch_active: active }).eq("id", orgId);
+    if (active) {
+      const { data: running } = await this.db
+        .from("missions")
+        .select("*")
+        .eq("organization_id", orgId)
+>>> 393:         .in("status", ["PLANNING", "RUNNING", "WAITING_APPROVAL", "REVIEWING"]);
+      for (const m of running ?? [])
+        await this.finish(m, "STOPPED", "Kill switch activated: all missions halted.");
+      await this.db
+        .from("agents")
+        .update({ status: "PAUSED", current_mission_id: null, current_task_id: null })
+        .eq("organization_id", orgId)
+        .neq("status", "OFFLINE");
+    } else {
+      await this.db
+        .from("agents")
+        .update({ status: "IDLE" })
+        .eq("organization_id", orgId)
+        .eq("status", "PAUSED");
+    }
+    await this.audit(null, active ? "kill_switch.activate" : "kill_switch.deactivate", {
+      risk: "CRITICAL",
+    });
+    return { ok: true };
+          "FAILED",
+          `Approval denied for "${ar.action}". The controller cannot complete the mission without it.`,
+        );
+      }
+    }
+    return { ok: true };
+  }
+
+  /** Advance one mission by one bounded unit of work. Returns what happened. */
+  async step(missionId: string): Promise<{ acted: boolean; note: string }> {
+    const { data: m0 } = await this.db.from("missions").select("*").eq("id", missionId).single();
+    if (!m0) throw new Error("Mission not found");
+>>> 546:     if (!["PLANNING", "RUNNING", "WAITING_APPROVAL", "REVIEWING"].includes(m0.status))
+      return { acted: false, note: `status ${m0.status}` };
+    await this.load(m0.organization_id);
+
+    if (this.org.kill_switch_active) return { acted: false, note: "kill switch active" };
+    if (m0.stop_requested) {
+      await this.finish(m0, "STOPPED", "Stop requested by operator.");
+      return { acted: true, note: "stopped" };
+    }
+
+    if (m0.status === "WAITING_APPROVAL") return { acted: false, note: "waiting approval" };
+
+    const configuredMaxSteps = Math.min(m0.max_steps, this.settings?.max_steps ?? m0.max_steps);
+    if (m0.current_step >= configuredMaxSteps) {
+      await this.finish(
+        m0,
+        "FAILED",
+        `Step limit reached (${configuredMaxSteps}). Loop protection stopped the mission.`,
+      );
+      );
+      if (Number(mission.total_cost) > budget) {
+        await this.finish(
+          mission,
+          "FAILED",
+          `Budget exceeded ($${Number(mission.total_cost).toFixed(4)} > $${budget.toFixed(2)}).`,
+        );
+        return { acted: true, note: "budget" };
+      }
+
+      try {
+        switch (mission.phase) {
+>>> 594:           case "planning":
+            return await this.stepPlanning(mission);
+          case "kickoff":
+            return await this.stepKickoff(mission);
+          case "executing":
+            return await this.stepExecuting(mission);
+          case "finalizing":
+            return await this.stepFinalizing(mission);
+          default:
+            await this.db.from("missions").update({ phase: "planning" }).eq("id", mission.id);
+            return { acted: true, note: "phase reset" };
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await this.event(mission, "ENGINE_ERROR", msg, { agentId: mission.commander_agent_id });
+        await this.finish(mission, "FAILED", msg);
+        return { acted: true, note: "error: " + msg };
+      }
+    } finally {
+      if (Number(mission.total_cost) > budget) {
+        await this.finish(
+          mission,
+          "FAILED",
+          `Budget exceeded ($${Number(mission.total_cost).toFixed(4)} > $${budget.toFixed(2)}).`,
+        );
+        return { acted: true, note: "budget" };
+      }
+
+      try {
+        switch (mission.phase) {
+          case "planning":
+>>> 595:             return await this.stepPlanning(mission);
+          case "kickoff":
+            return await this.stepKickoff(mission);
+          case "executing":
+            return await this.stepExecuting(mission);
+          case "finalizing":
+            return await this.stepFinalizing(mission);
+          default:
+            await this.db.from("missions").update({ phase: "planning" }).eq("id", mission.id);
+            return { acted: true, note: "phase reset" };
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await this.event(mission, "ENGINE_ERROR", msg, { agentId: mission.commander_agent_id });
+        await this.finish(mission, "FAILED", msg);
+        return { acted: true, note: "error: " + msg };
+      }
+    } finally {
+      await this.db.rpc("release_mission_step", {
+
+      try {
+        switch (mission.phase) {
+          case "planning":
+            return await this.stepPlanning(mission);
+          case "kickoff":
+            return await this.stepKickoff(mission);
+          case "executing":
+            return await this.stepExecuting(mission);
+          case "finalizing":
+            return await this.stepFinalizing(mission);
+          default:
+>>> 603:             await this.db.from("missions").update({ phase: "planning" }).eq("id", mission.id);
+            return { acted: true, note: "phase reset" };
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await this.event(mission, "ENGINE_ERROR", msg, { agentId: mission.commander_agent_id });
+        await this.finish(mission, "FAILED", msg);
+        return { acted: true, note: "error: " + msg };
+      }
+    } finally {
+      await this.db.rpc("release_mission_step", {
+        p_mission_id: mission.id,
+        p_worker_id: lockId,
+        p_lease_version: lease.leaseVersion,
+      });
+    }
+  }
+
+  // ---------------- phases ----------------
+  // ---------------- phases ----------------
+
+  private teamFor(mission: Mission, commander: Agent): Agent[] {
+    const subtree = subordinatesOf(commander.id, this.agents);
+    const allowed = mission.allowed_agent_ids.length
+      ? subtree.filter((a) => mission.allowed_agent_ids.includes(a.id))
+      : subtree;
+    return allowed.filter(
+      (a) => !a.is_suspended && a.status !== "OFFLINE" && a.status !== "PAUSED",
+    );
+  }
+
+>>> 633:   private async stepPlanning(mission: Mission) {
+    const commander = this.agent(mission.commander_agent_id)!;
+    const team = this.teamFor(mission, commander);
+    const provider = this.providerFor(commander);
+    const plan = await provider.plan({
+      context: { missionId: mission.id, taskId: "planning", agentRunId: crypto.randomUUID() },
+      goal: mission.goal,
+      title: mission.title,
+      commander,
+      team,
+      policies: this.policies.filter((p) => p.enforced).map((p) => p.rule),
+      systemPrompt: this.systemPrompt(commander),
+    });
+    await this.recordUsage(mission, commander, plan.usage, null, "plan");
+
+    const dag = validateTaskDag(plan.tasks);
+    if (!dag.valid) throw new Error(`INVALID_TASK_DAG: ${dag.errors.join(", ")}`);
+
+    const maxDepth = this.settings?.max_delegation_depth ?? 3;
+      ? subtree.filter((a) => mission.allowed_agent_ids.includes(a.id))
+      : subtree;
+    return allowed.filter(
+      (a) => !a.is_suspended && a.status !== "OFFLINE" && a.status !== "PAUSED",
+    );
+  }
+
+  private async stepPlanning(mission: Mission) {
+    const commander = this.agent(mission.commander_agent_id)!;
+    const team = this.teamFor(mission, commander);
+    const provider = this.providerFor(commander);
+    const plan = await provider.plan({
+>>> 638:       context: { missionId: mission.id, taskId: "planning", agentRunId: crypto.randomUUID() },
+      goal: mission.goal,
+      title: mission.title,
+      commander,
+      team,
+      policies: this.policies.filter((p) => p.enforced).map((p) => p.rule),
+      systemPrompt: this.systemPrompt(commander),
+    });
+    await this.recordUsage(mission, commander, plan.usage, null, "plan");
+
+    const dag = validateTaskDag(plan.tasks);
+    if (!dag.valid) throw new Error(`INVALID_TASK_DAG: ${dag.errors.join(", ")}`);
+
+    const maxDepth = this.settings?.max_delegation_depth ?? 3;
+    const assigned = this.assignTasks(plan.tasks, team);
+    const codeToId = new Map<string, string>();
+    const taskContracts: TaskContract[] = [];
+    let index = 0;
+    for (const { task, agent } of assigned) {
+
+========== planMission ==========
+
+========== provider.complete ==========
+
+========== backend.complete ==========

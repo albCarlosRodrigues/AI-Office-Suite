@@ -16,7 +16,6 @@ import type {
   AgentProvider as ProviderRow,
 } from "@/types/domain";
 import { resolveProvider, type ProviderSecrets } from "./providers/resolve.server";
-import { providerUsesMonetaryBudget } from "./providers/billing";
 import {
   estimateCost,
   type AgentProvider,
@@ -33,13 +32,6 @@ import { subordinatesOf } from "@/agents/hierarchy";
 import { TOOL_MAP } from "./tools/catalog";
 import { RISK_ORDER } from "@/permissions/catalog";
 import { AgentCapabilityMatcher } from "./AgentCapabilityMatcher";
-import {
-  allowedToolsForTask,
-  buildExecutionCandidates,
-  filterAgentsByTaskAccess,
-  formatPlanningPermissionMatrix,
-  missingTaskAccess,
-} from "./task-permission-routing";
 import { DelegationPolicyService } from "./DelegationPolicyService";
 import { AgentStateService, MissionStateMachine, TaskStateMachine } from "./state-machines";
 import { MeetingService } from "./MeetingService";
@@ -56,7 +48,6 @@ import path from "node:path";
 import { FileArtifactStore } from "@/runtime/artifact-store.server";
 
 type DB = SupabaseClient<Database>;
-type AgentToolSetting = Database["public"]["Tables"]["agent_tools"]["Row"];
 
 /**
  * OrchestrationEngine — server-side, persisted, step-driven.
@@ -74,7 +65,6 @@ export class OrchestrationEngine {
   private departments: Department[] = [];
   private providers: ProviderRow[] = [];
   private permissions: AgentPermission[] = [];
-  private toolSettings: AgentToolSetting[] = [];
   private secrets = new Map<string, ProviderSecrets>();
   private policies: OrgPolicy[] = [];
 
@@ -88,20 +78,14 @@ export class OrchestrationEngine {
   // ---------------- loading ----------------
 
   private async load(orgId: string) {
-    const [org, settings, agents, departments, providers, permissions, toolSettings] =
-      await Promise.all([
-        this.db.from("organizations").select("*").eq("id", orgId).single(),
-        this.db
-          .from("organization_settings")
-          .select("*")
-          .eq("organization_id", orgId)
-          .maybeSingle(),
-        this.db.from("agents").select("*").eq("organization_id", orgId),
-        this.db.from("departments").select("*").eq("organization_id", orgId),
-        this.db.from("agent_providers").select("*").eq("organization_id", orgId),
-        this.db.from("agent_permissions").select("*").eq("organization_id", orgId),
-        this.db.from("agent_tools").select("*"),
-      ]);
+    const [org, settings, agents, departments, providers, permissions] = await Promise.all([
+      this.db.from("organizations").select("*").eq("id", orgId).single(),
+      this.db.from("organization_settings").select("*").eq("organization_id", orgId).maybeSingle(),
+      this.db.from("agents").select("*").eq("organization_id", orgId),
+      this.db.from("departments").select("*").eq("organization_id", orgId),
+      this.db.from("agent_providers").select("*").eq("organization_id", orgId),
+      this.db.from("agent_permissions").select("*").eq("organization_id", orgId),
+    ]);
     if (org.error || !org.data) throw new Error("Organization not found or access denied");
     this.org = org.data;
     this.settings = settings.data ?? null;
@@ -109,8 +93,6 @@ export class OrchestrationEngine {
     this.departments = departments.data ?? [];
     this.providers = providers.data ?? [];
     this.permissions = permissions.data ?? [];
-    const agentIds = new Set(this.agents.map((agent) => agent.id));
-    this.toolSettings = (toolSettings.data ?? []).filter((tool) => agentIds.has(tool.agent_id));
     this.policies = ((this.settings?.policies ?? []) as unknown as OrgPolicy[]).filter(
       (p) => p && typeof p.rule === "string",
     );
@@ -216,12 +198,6 @@ export class OrchestrationEngine {
     if (a) Object.assign(a, { status, ...extra });
   }
 
-  private monetaryUsageCost(agent: Agent | null, usage: Usage) {
-    if (usage.simulated || this.org.simulation_mode) return 0;
-    const row = this.providers.find((provider) => provider.id === agent?.provider_id);
-    return providerUsesMonetaryBudget(row) ? estimateCost(usage) : 0;
-  }
-
   private async recordUsage(
     mission: Mission,
     agent: Agent | null,
@@ -232,8 +208,8 @@ export class OrchestrationEngine {
     commandId?: string,
     runId?: string,
   ) {
+    const cost = usage.simulated ? estimateCost(usage) : estimateCost(usage);
     const row = this.providers.find((p) => p.id === agent?.provider_id);
-    const cost = this.monetaryUsageCost(agent, usage);
     await Promise.all([
       this.db.from("cost_records").insert({
         organization_id: mission.organization_id,
@@ -375,9 +351,6 @@ export class OrchestrationEngine {
         summary: null,
         report: null,
         stop_requested: false,
-        total_cost: 0,
-        total_tokens_in: 0,
-        total_tokens_out: 0,
         is_simulated: this.org.simulation_mode,
         execution_mode: this.org.simulation_mode ? "SIMULATION" : "REAL",
       })
@@ -660,13 +633,6 @@ export class OrchestrationEngine {
   private async stepPlanning(mission: Mission) {
     const commander = this.agent(mission.commander_agent_id)!;
     const team = this.teamFor(mission, commander);
-    const executionCandidates = buildExecutionCandidates(commander, team);
-    const permissionMatrix = formatPlanningPermissionMatrix(
-      executionCandidates,
-      this.permissions,
-      commander.id,
-      this.toolSettings,
-    );
     const provider = this.providerFor(commander);
     const plan = await provider.plan({
       context: { missionId: mission.id, taskId: "planning", agentRunId: crypto.randomUUID() },
@@ -675,7 +641,7 @@ export class OrchestrationEngine {
       commander,
       team,
       policies: this.policies.filter((p) => p.enforced).map((p) => p.rule),
-      systemPrompt: `${this.systemPrompt(commander)}\n\nPERMISSION-AWARE DELEGATION (MANDATORY):\nBefore decomposing or delegating work, inspect the permission matrix below. Every planned task must declare the tools it needs. A task may only be routed to an agent that has every permission required by those tools. The commander is also an execution candidate: if only the commander has the required permissions, keep that work with the commander instead of delegating it. Split mixed-permission work into separate tasks when that allows safe delegation. Never assume a subordinate has a permission or tool that is not shown.\n\n${permissionMatrix}`,
+      systemPrompt: this.systemPrompt(commander),
     });
     await this.recordUsage(mission, commander, plan.usage, null, "plan");
 
@@ -683,7 +649,7 @@ export class OrchestrationEngine {
     if (!dag.valid) throw new Error(`INVALID_TASK_DAG: ${dag.errors.join(", ")}`);
 
     const maxDepth = this.settings?.max_delegation_depth ?? 3;
-    const assigned = this.assignTasks(plan.tasks, executionCandidates);
+    const assigned = this.assignTasks(plan.tasks, team);
     const codeToId = new Map<string, string>();
     const taskContracts: TaskContract[] = [];
     let index = 0;
@@ -840,48 +806,20 @@ export class OrchestrationEngine {
     return { acted: true, note: "planned" };
   }
 
-  private assignTasks(
-    tasks: PlannedTask[],
-    candidates: Agent[],
-  ): { task: PlannedTask; agent: Agent }[] {
+  private assignTasks(tasks: PlannedTask[], team: Agent[]): { task: PlannedTask; agent: Agent }[] {
     const load = new Map<string, number>();
     return tasks.map((task) => {
-      // Hard permission barrier: the model may propose a bad delegation, but the
-      // runtime will never route a task to an agent missing a tool permission.
-      const accessEligible = filterAgentsByTaskAccess(
-        task,
-        candidates,
-        this.permissions,
-        this.toolSettings,
-      );
-      const agent = AgentCapabilityMatcher.select(task, accessEligible, {
+      const agent = AgentCapabilityMatcher.select(task, team, {
         departments: this.departments,
         providers: this.providers,
         permissions: this.permissions,
         load,
         simulationMode: this.org.simulation_mode,
       });
-      if (!agent) {
-        const gaps = candidates
-          .map((candidate) => {
-            const gaps = missingTaskAccess(
-              task,
-              candidate,
-              this.permissions,
-              this.toolSettings,
-            );
-            const missing = [...gaps.missingTools, ...gaps.missingPermissions];
-            return `${candidate.name}: ${
-              missing.length
-                ? `missing ${missing.join(", ")}`
-                : "tool/permission-compatible but rejected by capability/provider routing"
-            }`;
-          })
-          .join("; ");
+      if (!agent)
         throw new Error(
-          `NO_ELIGIBLE_AGENT: no active execution candidate can safely execute ${task.code}. ${gaps}`,
+          `NO_ELIGIBLE_AGENT: no active subordinate has the capabilities and permissions for ${task.code}.`,
         );
-      }
       load.set(agent.id, (load.get(agent.id) ?? 0) + 1);
       return { task, agent };
     });
@@ -894,37 +832,28 @@ export class OrchestrationEngine {
     task: PlannedTask & { id: string },
     maxDepth: number,
   ) {
-    // chain of command: commander → ... → worker's manager → worker.
-    // The commander is a valid execution candidate, so self-execution must not
-    // be treated as delegation to its own manager.
+    // chain of command: commander → ... → worker's manager → worker
     const chain: Agent[] = [];
-    if (worker.id !== commander.id) {
-      let cur = worker;
-      while (
-        cur.manager_agent_id &&
-        cur.manager_agent_id !== commander.id &&
-        chain.length < maxDepth
-      ) {
-        const mgr = this.agent(cur.manager_agent_id);
-        if (!mgr) break;
-        chain.unshift(mgr);
-        cur = mgr;
-      }
+    let cur = worker;
+    while (
+      cur.manager_agent_id &&
+      cur.manager_agent_id !== commander.id &&
+      chain.length < maxDepth
+    ) {
+      const mgr = this.agent(cur.manager_agent_id);
+      if (!mgr) break;
+      chain.unshift(mgr);
+      cur = mgr;
     }
-    const allowedTools = allowedToolsForTask(
-      task,
-      worker,
-      this.permissions,
-      this.toolSettings,
-    );
-    if (allowedTools.length !== task.tools.length) {
-      const gaps = missingTaskAccess(task, worker, this.permissions, this.toolSettings);
-      throw new Error(
-        `TASK_ACCESS_CONTEXT_MISMATCH: ${worker.name} cannot execute ${task.code}. ` +
-          `missing_tools=[${gaps.missingTools.join(", ")}] ` +
-          `missing_permissions=[${gaps.missingPermissions.join(", ")}]`,
+    const allowedTools = task.tools
+      .filter((t) => TOOL_MAP[t])
+      .filter(
+        (t) =>
+          worker.capabilities.length === 0 ||
+          worker.capabilities.includes(t) ||
+          t === "web_search" ||
+          t === "repository_read",
       );
-    }
     const forbidden = this.policies
       .filter((p) => p.enforced && /never|não|forbid|prohib/i.test(p.rule))
       .map((p) => p.rule);
@@ -987,9 +916,7 @@ export class OrchestrationEngine {
       );
       issuer = mgr;
     }
-    if (issuer.id !== worker.id) {
-      await this.authorizeDelegation(mission, issuer, worker, task.id);
-    }
+    await this.authorizeDelegation(mission, issuer, worker, task.id);
     await this.db.from("commands").upsert(
       {
         organization_id: mission.organization_id,
@@ -1016,9 +943,7 @@ export class OrchestrationEngine {
     await this.event(
       mission,
       "COMMAND_ISSUED",
-      worker.id === commander.id
-        ? `${commander.name}: execute "${task.title}"`
-        : `${issuer.name} → ${worker.name}: "${task.title}"`,
+      `${issuer.name} → ${worker.name}: "${task.title}"`,
       { agentId: issuer.id, targetAgentId: worker.id, taskId: task.id },
     );
     await this.audit(mission, "command.issue", {
@@ -1520,7 +1445,7 @@ export class OrchestrationEngine {
       evidence: response.evidence as never,
       tokens_in: response.usage.tokensIn,
       tokens_out: response.usage.tokensOut,
-      cost: this.monetaryUsageCost(worker, response.usage),
+      cost: estimateCost(response.usage),
       latency_ms: response.usage.latencyMs,
     });
     return { acted: true, note: `started ${task.code}` };

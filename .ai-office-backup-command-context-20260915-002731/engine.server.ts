@@ -34,11 +34,10 @@ import { TOOL_MAP } from "./tools/catalog";
 import { RISK_ORDER } from "@/permissions/catalog";
 import { AgentCapabilityMatcher } from "./AgentCapabilityMatcher";
 import {
-  allowedToolsForTask,
   buildExecutionCandidates,
-  filterAgentsByTaskAccess,
+  filterAgentsByTaskPermissions,
   formatPlanningPermissionMatrix,
-  missingTaskAccess,
+  missingPermissionsForTask,
 } from "./task-permission-routing";
 import { DelegationPolicyService } from "./DelegationPolicyService";
 import { AgentStateService, MissionStateMachine, TaskStateMachine } from "./state-machines";
@@ -56,7 +55,6 @@ import path from "node:path";
 import { FileArtifactStore } from "@/runtime/artifact-store.server";
 
 type DB = SupabaseClient<Database>;
-type AgentToolSetting = Database["public"]["Tables"]["agent_tools"]["Row"];
 
 /**
  * OrchestrationEngine — server-side, persisted, step-driven.
@@ -74,7 +72,6 @@ export class OrchestrationEngine {
   private departments: Department[] = [];
   private providers: ProviderRow[] = [];
   private permissions: AgentPermission[] = [];
-  private toolSettings: AgentToolSetting[] = [];
   private secrets = new Map<string, ProviderSecrets>();
   private policies: OrgPolicy[] = [];
 
@@ -88,20 +85,14 @@ export class OrchestrationEngine {
   // ---------------- loading ----------------
 
   private async load(orgId: string) {
-    const [org, settings, agents, departments, providers, permissions, toolSettings] =
-      await Promise.all([
-        this.db.from("organizations").select("*").eq("id", orgId).single(),
-        this.db
-          .from("organization_settings")
-          .select("*")
-          .eq("organization_id", orgId)
-          .maybeSingle(),
-        this.db.from("agents").select("*").eq("organization_id", orgId),
-        this.db.from("departments").select("*").eq("organization_id", orgId),
-        this.db.from("agent_providers").select("*").eq("organization_id", orgId),
-        this.db.from("agent_permissions").select("*").eq("organization_id", orgId),
-        this.db.from("agent_tools").select("*"),
-      ]);
+    const [org, settings, agents, departments, providers, permissions] = await Promise.all([
+      this.db.from("organizations").select("*").eq("id", orgId).single(),
+      this.db.from("organization_settings").select("*").eq("organization_id", orgId).maybeSingle(),
+      this.db.from("agents").select("*").eq("organization_id", orgId),
+      this.db.from("departments").select("*").eq("organization_id", orgId),
+      this.db.from("agent_providers").select("*").eq("organization_id", orgId),
+      this.db.from("agent_permissions").select("*").eq("organization_id", orgId),
+    ]);
     if (org.error || !org.data) throw new Error("Organization not found or access denied");
     this.org = org.data;
     this.settings = settings.data ?? null;
@@ -109,8 +100,6 @@ export class OrchestrationEngine {
     this.departments = departments.data ?? [];
     this.providers = providers.data ?? [];
     this.permissions = permissions.data ?? [];
-    const agentIds = new Set(this.agents.map((agent) => agent.id));
-    this.toolSettings = (toolSettings.data ?? []).filter((tool) => agentIds.has(tool.agent_id));
     this.policies = ((this.settings?.policies ?? []) as unknown as OrgPolicy[]).filter(
       (p) => p && typeof p.rule === "string",
     );
@@ -665,7 +654,6 @@ export class OrchestrationEngine {
       executionCandidates,
       this.permissions,
       commander.id,
-      this.toolSettings,
     );
     const provider = this.providerFor(commander);
     const plan = await provider.plan({
@@ -848,13 +836,12 @@ export class OrchestrationEngine {
     return tasks.map((task) => {
       // Hard permission barrier: the model may propose a bad delegation, but the
       // runtime will never route a task to an agent missing a tool permission.
-      const accessEligible = filterAgentsByTaskAccess(
+      const permissionEligible = filterAgentsByTaskPermissions(
         task,
         candidates,
         this.permissions,
-        this.toolSettings,
       );
-      const agent = AgentCapabilityMatcher.select(task, accessEligible, {
+      const agent = AgentCapabilityMatcher.select(task, permissionEligible, {
         departments: this.departments,
         providers: this.providers,
         permissions: this.permissions,
@@ -864,18 +851,8 @@ export class OrchestrationEngine {
       if (!agent) {
         const gaps = candidates
           .map((candidate) => {
-            const gaps = missingTaskAccess(
-              task,
-              candidate,
-              this.permissions,
-              this.toolSettings,
-            );
-            const missing = [...gaps.missingTools, ...gaps.missingPermissions];
-            return `${candidate.name}: ${
-              missing.length
-                ? `missing ${missing.join(", ")}`
-                : "tool/permission-compatible but rejected by capability/provider routing"
-            }`;
+            const missing = missingPermissionsForTask(task, candidate, this.permissions);
+            return `${candidate.name}: ${missing.length ? `missing ${missing.join(", ")}` : "permission-compatible but rejected by capability/provider routing"}`;
           })
           .join("; ");
         throw new Error(
@@ -911,20 +888,15 @@ export class OrchestrationEngine {
         cur = mgr;
       }
     }
-    const allowedTools = allowedToolsForTask(
-      task,
-      worker,
-      this.permissions,
-      this.toolSettings,
-    );
-    if (allowedTools.length !== task.tools.length) {
-      const gaps = missingTaskAccess(task, worker, this.permissions, this.toolSettings);
-      throw new Error(
-        `TASK_ACCESS_CONTEXT_MISMATCH: ${worker.name} cannot execute ${task.code}. ` +
-          `missing_tools=[${gaps.missingTools.join(", ")}] ` +
-          `missing_permissions=[${gaps.missingPermissions.join(", ")}]`,
+    const allowedTools = task.tools
+      .filter((t) => TOOL_MAP[t])
+      .filter(
+        (t) =>
+          worker.capabilities.length === 0 ||
+          worker.capabilities.includes(t) ||
+          t === "web_search" ||
+          t === "repository_read",
       );
-    }
     const forbidden = this.policies
       .filter((p) => p.enforced && /never|não|forbid|prohib/i.test(p.rule))
       .map((p) => p.rule);

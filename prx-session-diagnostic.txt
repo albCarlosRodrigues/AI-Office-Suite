@@ -1,0 +1,77 @@
+class PrxChatBackend implements ExecutionBackend {
+  readonly id = "prx-localant";
+  readonly capabilities = {
+    plan: true,
+    execute: true,
+    review: true,
+    tools: [],
+    supportsSessionResume: true,
+  };
+  private lastMessageId: string | null = null;
+  constructor(
+    private client: PrxSessionClient,
+    private config: {
+      sessionId: string;
+      conversationId: string;
+      agentId: string;
+      timeoutMs: number;
+    },
+  ) {}
+  async healthCheck() {
+    const ok = await this.client
+      .health(AbortSignal.timeout(this.config.timeoutMs))
+      .catch(() => false);
+    this.client.close();
+    return {
+      status: ok ? ("HEALTHY" as const) : ("UNAVAILABLE" as const),
+      message: ok ? "PRX session reachable; response not tested" : "PRX session unavailable",
+    };
+  }
+  async execute(input: ExecutionInput, signal?: AbortSignal) {
+    const payload = ChatPayload.parse(input.payload);
+    const deadline = AbortSignal.timeout(this.config.timeoutMs);
+    const abort = signal ? AbortSignal.any([signal, deadline]) : deadline;
+    abort.throwIfAborted();
+    const key = this.config.sessionId;
+    if (locks.has(key)) throw new Error("PRX_SESSION_BUSY");
+    locks.add(key);
+    const request: PrxRequest = {
+      ...this.config,
+      requestId: crypto.randomUUID(),
+      missionId: input.missionId ?? "probe",
+      taskId: input.taskId,
+      agentRunId: input.agentRunId ?? crypto.randomUUID(),
+      lastMessageId: this.lastMessageId,
+      prompt: JSON.stringify({ system: payload.system, user: payload.user }),
+    };
+    try {
+      await interruptible(this.client.send(request, abort), abort);
+      while (true) {
+        abort.throwIfAborted();
+        const reply = PrxReply.safeParse(
+          await interruptible(this.client.receive(request, abort), abort),
+        );
+        if (!reply.success) continue;
+        const r = reply.data;
+        if (
+          r.requestId !== request.requestId ||
+          r.sessionId !== request.sessionId ||
+          r.conversationId !== request.conversationId ||
+          r.agentId !== request.agentId ||
+          r.messageId === request.lastMessageId
+        )
+          continue;
+        this.lastMessageId = r.messageId;
+        return {
+          status: "COMPLETED" as const,
+          result: r.text,
+          backendId: this.id,
+          fallbackCount: 0,
+        };
+      }
+    } finally {
+      locks.delete(key);
+      this.client.close();
+    }
+  }
+}
