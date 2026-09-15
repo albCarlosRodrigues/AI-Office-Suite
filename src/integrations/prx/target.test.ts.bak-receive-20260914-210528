@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { parsePrxReplyCandidate, selectPrxTarget } from "./cdp-session.server";
+import { selectPrxTarget } from "./cdp-session.server";
 
 const desktop = {
   id: "desktop-current",
@@ -54,48 +54,4 @@ it("fails closed when multiple Desktop shells are present", () => {
   ).toThrow(
     "PRX_AMBIGUOUS_DESKTOP_TARGET",
   );
-});
-it("parses the rendered PRX reply and rejects the outbound template", () => {
-  const expected = {
-    requestId: "req-123",
-    sessionId: "prx-geral-confirmacao",
-    conversationId:
-      "https://chatgpt.com/g/project/c/chat",
-    agentId: "health",
-  };
-
-  const outbound = JSON.stringify({
-    ...expected,
-    messageId: "req-123",
-    text: "YOUR RESPONSE HERE",
-  });
-
-  expect(
-    parsePrxReplyCandidate(
-      outbound,
-      expected,
-    ),
-  ).toBeNull();
-
-  const rendered =
-    'Resposta: ' +
-    JSON.stringify({
-      ...expected,
-      messageId: "req-123",
-      text: "OK",
-    });
-
-  expect(
-    parsePrxReplyCandidate(
-      rendered,
-      expected,
-    ),
-  ).toMatchObject({
-    requestId: "req-123",
-    sessionId:
-      "prx-geral-confirmacao",
-    agentId: "health",
-    messageId: "req-123",
-    text: "OK",
-  });
 });

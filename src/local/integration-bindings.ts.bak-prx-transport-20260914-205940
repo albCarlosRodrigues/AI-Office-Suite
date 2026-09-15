@@ -40,18 +40,7 @@ export function bindAcmeIntegrations(
           type,
           base_url: baseUrl,
           model,
-          config:
-            backend === "prx-localant"
-              ? {
-                  backend,
-                  sessionId: "prx-geral-confirmacao",
-                  conversationId:
-                    "https://chatgpt.com/g/g-p-6aa868af0cd0819188e1d6d1fda02e29/c/6aa868d5-27a4-83e9-aebe-006d9b6738e3",
-                  composerLabel: "Mensagem para o ChatGPT",
-                  projectTitle: "PRX - Geral",
-                  conversationTitle: "Confirmação do canal",
-                }
-              : { backend },
+          config: { backend },
           headers: {},
           is_enabled: true,
           health: "UNCONFIGURED",

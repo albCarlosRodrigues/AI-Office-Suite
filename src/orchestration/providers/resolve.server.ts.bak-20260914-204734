@@ -58,8 +58,6 @@ export function resolveProvider(
               row.base_url ?? "http://127.0.0.1:9223",
               String(cfg["sessionId"] ?? ""),
               String(cfg["composerLabel"] ?? ""),
-              String(cfg["projectTitle"] ?? ""),
-              String(cfg["conversationTitle"] ?? ""),
             ),
             {
               sessionId: String(cfg["sessionId"] ?? ""),

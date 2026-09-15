@@ -7,7 +7,7 @@ const HOST = "127.0.0.1";
 const PORT = 4173;
 let localServer;
 
-function waitForServer(attempts = 400) {
+function waitForServer(attempts = 100) {
   return new Promise((resolve, reject) => {
     const probe = (remaining) => {
       const request = http.get(`http://${HOST}:${PORT}/`, (response) => {

@@ -1,0 +1,61 @@
+import { expect, it } from "vitest";
+import { selectPrxTarget } from "./cdp-session.server";
+
+const desktop = {
+  id: "desktop-new-id",
+  type: "page",
+  url: "app://-/index.html",
+  webSocketDebuggerUrl:
+    "ws://127.0.0.1:9223/devtools/page/desktop-new-id",
+};
+
+it("rediscovers the desktop target after its ID changes", () => {
+  expect(
+    selectPrxTarget([desktop], "old-id")?.id,
+  ).toBe("desktop-new-id");
+});
+
+it("prefers the visible desktop shell over a hidden conversation webview", () => {
+  const hiddenConversation = {
+    id: "conversation-webview",
+    type: "webview",
+    url:
+      "https://chatgpt.com/g/g-p-test/c/conversation-test",
+    webSocketDebuggerUrl:
+      "ws://127.0.0.1:9223/devtools/page/conversation-webview",
+  };
+
+  expect(
+    selectPrxTarget(
+      [hiddenConversation, desktop],
+      "conversation-webview",
+    )?.id,
+  ).toBe("desktop-new-id");
+});
+
+it("rejects unrelated and ambiguous desktop targets", () => {
+  expect(
+    selectPrxTarget(
+      [
+        {
+          ...desktop,
+          url: "https://other.example",
+        },
+      ],
+      "missing",
+    ),
+  ).toBeUndefined();
+
+  expect(() =>
+    selectPrxTarget(
+      [
+        desktop,
+        {
+          ...desktop,
+          id: "second-desktop",
+        },
+      ],
+      "",
+    ),
+  ).toThrow("AMBIGUOUS");
+});

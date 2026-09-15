@@ -1,0 +1,36 @@
+import { expect, it } from "vitest";
+import { selectPrxTarget } from "./cdp-session.server";
+const target = {
+  id: "new-id",
+  type: "page",
+  url: "app://-/index.html",
+  webSocketDebuggerUrl: "ws://127.0.0.1:9223/devtools/page/new-id",
+};
+it("rediscovers the desktop target after its ID changes", () => {
+  expect(selectPrxTarget([target], "old-id")?.id).toBe("new-id");
+});
+it("rejects unrelated and ambiguous targets", () => {
+  expect(selectPrxTarget([{ ...target, url: "https://other.example" }], "new-id")).toBeUndefined();
+  expect(() => selectPrxTarget([target, { ...target, id: "second" }], "")).toThrow("AMBIGUOUS");
+});
+
+it("selects the exact conversation webview before the desktop shell", () => {
+  const conversationUrl =
+    "https://chatgpt.com/g/g-p-test/c/conversation-test";
+
+  const conversation = {
+    id: "conversation-target",
+    type: "webview",
+    url: conversationUrl,
+    webSocketDebuggerUrl:
+      "ws://127.0.0.1:9223/devtools/page/conversation-target",
+  };
+
+  expect(
+    selectPrxTarget([target, conversation], "old-id", conversationUrl)?.id,
+  ).toBe("conversation-target");
+
+  expect(
+    selectPrxTarget([target], "old-id", conversationUrl),
+  ).toBeUndefined();
+});
