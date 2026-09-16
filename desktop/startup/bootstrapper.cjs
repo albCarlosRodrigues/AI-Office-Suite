@@ -152,11 +152,10 @@ async function run(planFile) {
       stop: win.stopExact,
       start: (name) =>
         name === "gpt"
-          ? win.launchIndependent(
-              gptExe,
-              ["--remote-debugging-address=127.0.0.1", "--remote-debugging-port=9223"],
-              path.dirname(gptExe),
-            )
+          ? win.launchChatGptPackage(gptExe, [
+              "--remote-debugging-address=127.0.0.1",
+              "--remote-debugging-port=9223",
+            ])
           : win.launchIndependent(
               uv,
               [

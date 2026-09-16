@@ -1,3 +1,4 @@
+import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import type { ExecutionBackend, ExecutionInput } from "@/orchestration/execution-backend";
 
@@ -94,7 +95,17 @@ export class PrxChatBackend implements ExecutionBackend {
         const reply = PrxReply.safeParse(
           await interruptible(this.client.receive(request, abort), abort),
         );
-        if (!reply.success) continue;
+        if (!reply.success) {
+          /*
+           * No complete correlated reply yet.
+           *
+           * Give the Desktop renderer time to append the next
+           * streaming chunk before querying the DOM again.
+           */
+          await interruptible(delay(150), abort);
+
+          continue;
+        }
         const r = reply.data;
         if (
           r.requestId !== request.requestId ||

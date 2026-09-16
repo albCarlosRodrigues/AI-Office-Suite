@@ -120,6 +120,90 @@ async function launchIndependent(exe, args, cwd, invoke = ps) {
   if (!Number.isInteger(result) || result <= 0) throw new Error("CREATE_FAILED");
   return result;
 }
+async function launchChatGptPackage(exe, args, invoke = ps) {
+  if (
+    !exe ||
+    !Array.isArray(args) ||
+    args.some((value) => typeof value !== "string" || /["\r\n]/.test(value))
+  ) {
+    throw new Error("INVALID_LAUNCH_ARGUMENT");
+  }
+
+  const portArg = args.find((value) => value.startsWith("--remote-debugging-port=")) ?? "";
+
+  const port = Number(portArg.split("=")[1]);
+
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("INVALID_DEBUG_PORT");
+  }
+
+  const encodedArgs = args
+    .map((value) => (/\s/.test(value) ? '"' + value.replace(/\\$/, "\\\\") + '"' : value))
+    .join(" ");
+
+  const result = await invoke(
+    input +
+      "$packages=@(" +
+      "Get-AppxPackage|" +
+      "Where-Object {" +
+      "$_.PackageFamilyName -eq 'OpenAI.Codex_2p2nqsd0c76g0' -or " +
+      "$_.PackageFamilyName -eq 'OpenAI.ChatGPT-Desktop_2p2nqsd0c76g0'" +
+      "}" +
+      ");" +
+      "$pkg=$packages|" +
+      "Where-Object {" +
+      "$v.exe -like ($_.InstallLocation+'\\*')" +
+      "}|" +
+      "Sort-Object Version -Descending|" +
+      "Select-Object -First 1;" +
+      "if(!$pkg){" +
+      "throw 'CHATGPT_PACKAGE_NOT_FOUND'" +
+      "};" +
+      "$null=Get-Command " +
+      "Invoke-CommandInDesktopPackage " +
+      "-ErrorAction Stop;" +
+      "$env:CODEX_SPARKLE_ENABLED='false';" +
+      "Invoke-CommandInDesktopPackage " +
+      "-PackageFamilyName $pkg.PackageFamilyName " +
+      "-AppId 'App' " +
+      "-Command $v.exe " +
+      "-Args $v.args|" +
+      "Out-Null;" +
+      "$needle='*--remote-debugging-port='+" +
+      "[string][int]$v.port+'*';" +
+      "$found=$null;" +
+      "for($i=0;$i -lt 40;$i++){" +
+      "$p=Get-CimInstance Win32_Process|" +
+      "Where-Object {" +
+      "$_.ExecutablePath -eq $v.exe -and " +
+      "$_.CommandLine -like $needle -and " +
+      "$_.CommandLine -notlike '*--type=*'" +
+      "}|" +
+      "Sort-Object CreationDate|" +
+      "Select-Object -First 1;" +
+      "if($p){" +
+      "$found=[int]$p.ProcessId;" +
+      "break" +
+      "};" +
+      "Start-Sleep -Milliseconds 250" +
+      "};" +
+      "if(!$found){" +
+      "throw 'CHATGPT_LAUNCH_PID_NOT_FOUND'" +
+      "};" +
+      "$found|ConvertTo-Json",
+    {
+      exe,
+      args: encodedArgs,
+      port,
+    },
+  );
+
+  if (!Number.isInteger(result) || result <= 0) {
+    throw new Error("CHATGPT_LAUNCH_PID_NOT_FOUND");
+  }
+
+  return result;
+}
 async function stopExact(identity) {
   // Recheck PID + executable + creation time immediately before EACH stop, avoiding PID reuse.
   await ps(
@@ -163,6 +247,7 @@ module.exports = {
   validateProject,
   samePath,
   launchIndependent,
+  launchChatGptPackage,
   stopExact,
   portOwners,
 };

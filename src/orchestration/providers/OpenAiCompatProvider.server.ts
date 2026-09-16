@@ -1,5 +1,6 @@
 import type { ProviderType, ProviderHealth } from "@/types/domain";
 import { z } from "zod";
+import { jsonrepair } from "jsonrepair";
 import { TOOL_MAP } from "../tools/catalog";
 import type {
   AgentProvider,
@@ -29,6 +30,17 @@ import {
  * Agents backed by this provider produce real reasoning — no scripted output.
  */
 export interface OpenAiCompatConfig {
+  /**
+   * Optional non-invasive provider health probe.
+   *
+   * Backends such as PRX must not execute a model request
+   * merely to check transport availability.
+   */
+  healthProbe?: () => Promise<{
+    health: ProviderHealth;
+    latencyMs: number;
+    message: string;
+  }>;
   transport?: (
     system: string,
     user: string,
@@ -117,6 +129,76 @@ const ReviewOutputSchema = z.object({
   feedback: z.string().min(1),
 });
 
+/**
+ * Preserve Windows drive-path semantics before JSON.parse().
+ *
+ * Example model output:
+ *   C:\new\test
+ *
+ * Native JSON.parse would interpret \n and \t as control
+ * escapes. Odd runs of backslashes inside drive-path-looking
+ * segments are doubled first.
+ */
+function protectWindowsPathsInJson(input: string) {
+  return input.replace(/[A-Za-z]:(?:\\+|[^"\\\r\n])*/g, (segment) =>
+    segment.replace(/\\+/g, (slashes) => (slashes.length % 2 === 0 ? slashes : slashes + "\\")),
+  );
+}
+
+/**
+ * Deterministic parser for structured model output.
+ *
+ * 1. strip optional markdown fence
+ * 2. prefer extracted JSON object when surrounding prose exists
+ * 3. preserve Windows paths
+ * 4. JSON.parse
+ * 5. one jsonrepair pass
+ * 6. caller's Zod schema remains authoritative
+ */
+export function parseProviderJson<T>(text: string): T | null {
+  let cleaned = String(text || "").trim();
+
+  const fence = String.fromCharCode(96).repeat(3);
+
+  if (cleaned.toLowerCase().startsWith(fence + "json")) {
+    cleaned = cleaned.slice(fence.length + 4).trimStart();
+  } else if (cleaned.startsWith(fence)) {
+    cleaned = cleaned.slice(fence.length).trimStart();
+  }
+
+  if (cleaned.endsWith(fence)) {
+    cleaned = cleaned.slice(0, -fence.length).trimEnd();
+  }
+
+  if (!cleaned) {
+    return null;
+  }
+
+  const firstBrace = cleaned.indexOf("{");
+
+  const lastBrace = cleaned.lastIndexOf("}");
+
+  const extracted =
+    firstBrace >= 0 && lastBrace > firstBrace ? cleaned.slice(firstBrace, lastBrace + 1) : null;
+
+  const candidates = extracted && extracted !== cleaned ? [extracted, cleaned] : [cleaned];
+
+  for (const candidate of [...new Set(candidates)]) {
+    const protectedCandidate = protectWindowsPathsInJson(candidate);
+
+    try {
+      return JSON.parse(protectedCandidate) as T;
+    } catch {
+      try {
+        return JSON.parse(jsonrepair(protectedCandidate)) as T;
+      } catch {
+        // Try next candidate.
+      }
+    }
+  }
+
+  return null;
+}
 export class OpenAiCompatProvider implements AgentProvider {
   readonly simulated = false;
   readonly type: ProviderType;
@@ -201,23 +283,7 @@ export class OpenAiCompatProvider implements AgentProvider {
   }
 
   private parseJson<T>(text: string): T | null {
-    try {
-      const cleaned = text
-        .replace(/^```(?:json)?/m, "")
-        .replace(/```$/m, "")
-        .trim();
-      return JSON.parse(cleaned) as T;
-    } catch {
-      const m = text.match(/\{[\s\S]*\}/);
-      if (m) {
-        try {
-          return JSON.parse(m[0]) as T;
-        } catch {
-          return null;
-        }
-      }
-      return null;
-    }
+    return parseProviderJson<T>(text);
   }
 
   async plan(input: PlanInput, signal?: AbortSignal): Promise<PlanResult> {
@@ -325,6 +391,9 @@ export class OpenAiCompatProvider implements AgentProvider {
   }
 
   async healthCheck() {
+    if (this.cfg.healthProbe) {
+      return this.cfg.healthProbe();
+    }
     const started = Date.now();
     try {
       const { text } = await this.chat(
@@ -344,11 +413,23 @@ export class OpenAiCompatProvider implements AgentProvider {
         message,
       )
         ? (message as ProviderHealth)
-        : message.startsWith("PRX_")
+        : [
+              "PRX_SESSION_DISCONNECTED",
+              "PRX_CONNECTION_ERROR",
+              "PRX_CONNECTION_CLOSED",
+              "PRX_TARGET_DENIED",
+              "PRX_AMBIGUOUS_DESKTOP_TARGET",
+              "PRX_ROUTE_NOT_CONFIGURED",
+              "PRX_PROJECT_NOT_FOUND",
+              "PRX_CONVERSATION_NOT_FOUND",
+              "PRX_CONVERSATION_CHANGED",
+            ].includes(message)
           ? "DISCONNECTED"
-          : status === 401 || status === 403
-            ? "UNAUTHORIZED"
-            : "FAILED";
+          : message.startsWith("PRX_")
+            ? "FAILED"
+            : status === 401 || status === 403
+              ? "UNAUTHORIZED"
+              : "FAILED";
       return {
         health,
         latencyMs: Date.now() - started,

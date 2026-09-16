@@ -1,7 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { converge } = require("./manager.cjs");
-const { launchIndependent, ownsClaudinho } = require("./windows.cjs");
+const { launchIndependent, launchChatGptPackage, ownsClaudinho } = require("./windows.cjs");
 const path = require("node:path");
 const plan = { attempts: 3, gpt: { port: 9223 }, claudinho: { port: 8082 } };
 test("ownership handles quoted Windows args and rejects unrelated executable/workspace", () => {
@@ -145,6 +145,25 @@ test("TEST-11 detached Windows launch uses hidden CIM process, not parent pipes"
   assert.match(request.script, /ShowWindow=\[uint16\]0/);
   assert.match(request.script, /Win32_Process -MethodName Create/);
   assert.ok(!request.config.command.includes("powershell"));
+});
+test("TEST-12 ChatGPT MSIX launch uses package context instead of Win32 Create", async () => {
+  let request;
+
+  const pid = await launchChatGptPackage(
+    "C:\\Program Files\\WindowsApps\\OpenAI.Codex_x64\\app\\ChatGPT.exe",
+    ["--remote-debugging-address=127.0.0.1", "--remote-debugging-port=9223"],
+    async (script, config) => {
+      request = { script, config };
+      return 19904;
+    },
+  );
+
+  assert.equal(pid, 19904);
+  assert.match(request.script, /Invoke-CommandInDesktopPackage/);
+  assert.match(request.script, /OpenAI\.Codex_2p2nqsd0c76g0/);
+  assert.doesNotMatch(request.script, /Win32_Process -MethodName Create/);
+  assert.equal(request.config.port, 9223);
+  assert.match(request.config.args, /--remote-debugging-port=9223/);
 });
 test("independent launch rejects malformed PID and argument injection", async () => {
   await assert.rejects(

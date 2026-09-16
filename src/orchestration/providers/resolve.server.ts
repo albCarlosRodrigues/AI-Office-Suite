@@ -85,6 +85,26 @@ export function resolveProvider(
       maxTokens: row.max_tokens,
       timeoutMs: row.timeout_ms,
       headers: {},
+      healthProbe: async () => {
+        const started = Date.now();
+
+        const state = await backend.healthCheck();
+
+        return {
+          health:
+            state.status === "HEALTHY"
+              ? ("CONNECTED" as const)
+              : state.status === "DEGRADED"
+                ? ("DEGRADED" as const)
+                : backend.id === "prx-localant"
+                  ? ("DISCONNECTED" as const)
+                  : ("FAILED" as const),
+
+          latencyMs: Date.now() - started,
+
+          message: state.message,
+        };
+      },
       transport: async (system, user, json, signal, context) => {
         const started = Date.now();
         const result = await backend.execute(
