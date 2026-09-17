@@ -3,6 +3,52 @@ import type { RiskLevel } from "@/types/domain";
 export type ToolApprovalMode = "NONE" | "CONDITIONAL" | "ALWAYS";
 export type ToolExecutionBackend = "LOCAL" | "GITHUB" | "DATABASE" | "PROVIDER" | "EXTERNAL";
 export type ToolDataAccess = "NONE" | "READ" | "WRITE" | "EXTERNAL_EFFECT";
+export const CAPABILITIES = [
+  "repository_read",
+  "repository_write",
+  "shell",
+  "github",
+  "testing",
+  "browser",
+  "filesystem",
+  "code_analysis",
+  "browse_web",
+  "database",
+  "deploy",
+  "comms",
+  "delegate_tasks",
+  "approve_tasks",
+  "manage_agents",
+] as const;
+export type ToolCapability = (typeof CAPABILITIES)[number];
+
+const CAPABILITY_BY_TOOL_ID: Record<string, ToolCapability> = {
+  repository_read: "repository_read",
+  filesystem_read: "filesystem",
+  repository_write: "repository_write",
+  filesystem_write: "filesystem",
+  code_analysis: "code_analysis",
+  git_status: "repository_read",
+  git_diff: "repository_read",
+  git_diff_check: "repository_read",
+  git_apply: "repository_write",
+  shell: "shell",
+  testing: "testing",
+  typecheck: "testing",
+  lint: "testing",
+  build: "testing",
+  github_issue_read: "github",
+  github_pr_create: "github",
+  git_commit: "repository_write",
+  browser: "browser",
+  web_search: "browse_web",
+  filesystem: "filesystem",
+  database_query: "database",
+  database_write: "database",
+  deploy_staging: "deploy",
+  deploy_production: "deploy",
+  send_email: "comms",
+};
 
 /**
  * Canonical tool metadata shared by planning and authorization.
@@ -10,6 +56,9 @@ export type ToolDataAccess = "NONE" | "READ" | "WRITE" | "EXTERNAL_EFFECT";
  */
 export interface ToolDef {
   id: string;
+  capability: ToolCapability;
+  /** Primary permission for UI/audit; requiredPermissions remains authoritative. */
+  permission: string;
   name: string;
   description: string;
   riskLevel: RiskLevel;
@@ -25,11 +74,17 @@ export interface ToolDef {
 }
 
 const tool = (
-  definition: Omit<ToolDef, "aliases" | "enabledBy"> & {
+  definition: Omit<ToolDef, "aliases" | "enabledBy" | "capability" | "permission"> & {
     aliases?: string[];
     enabledBy?: string[];
   },
-): ToolDef => ({ aliases: [], enabledBy: [], ...definition });
+): ToolDef => {
+  const capability = CAPABILITY_BY_TOOL_ID[definition.id];
+  const permission = definition.requiredPermissions[0];
+  if (!capability) throw new Error(`TOOL_REGISTRY_MISSING_CAPABILITY:${definition.id}`);
+  if (!permission) throw new Error(`TOOL_REGISTRY_MISSING_PERMISSION:${definition.id}`);
+  return { aliases: [], enabledBy: [], capability, permission, ...definition };
+};
 
 export const TOOL_CATALOG: ToolDef[] = [
   tool({
@@ -39,7 +94,14 @@ export const TOOL_CATALOG: ToolDef[] = [
     riskLevel: "LOW",
     requiredPermissions: ["repository.read"],
     inputSchema: { path: "string (file or directory, relative to workspace)" },
-    outputSchema: { content: "string" },
+    outputSchema: {
+      type: '"file" | "directory"',
+      path: "string",
+      exists: "boolean",
+      content: "string?",
+      entries: "array?",
+      truncated: "boolean?",
+    },
     approval: "NONE",
     backend: "LOCAL",
     dataAccess: "READ",
@@ -350,6 +412,9 @@ export const TOOL_MAP = Object.fromEntries(TOOL_CATALOG.map((item) => [item.id, 
   string,
   ToolDef
 >;
+
+/** Canonical governance registry. UI/runtime consumers resolve tool metadata here. */
+export const TOOL_REGISTRY = TOOL_MAP;
 
 const ALIAS_TO_CANONICAL = new Map<string, string>();
 for (const definition of TOOL_CATALOG) {

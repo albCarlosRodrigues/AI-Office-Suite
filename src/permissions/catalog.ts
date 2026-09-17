@@ -1,4 +1,5 @@
 import type { RiskLevel } from "@/types/domain";
+import { CAPABILITIES as REGISTRY_CAPABILITIES, TOOL_CATALOG } from "./tool-registry";
 
 export interface PermissionDef {
   id: string;
@@ -32,19 +33,14 @@ export const PERMISSION_MAP = Object.fromEntries(PERMISSIONS.map((p) => [p.id, p
   PermissionDef
 >;
 
-export const CAPABILITIES = [
-  "repository_read",
-  "repository_write",
-  "shell",
-  "github",
-  "testing",
-  "browser",
-  "filesystem",
-  "code_analysis",
-  "browse_web",
-  "delegate_tasks",
-  "approve_tasks",
-  "manage_agents",
-] as const;
+for (const tool of TOOL_CATALOG) {
+  for (const permission of tool.requiredPermissions) {
+    if (!PERMISSION_MAP[permission]) {
+      throw new Error(`TOOL_REGISTRY_UNKNOWN_PERMISSION:${tool.id}:${permission}`);
+    }
+  }
+}
+
+export const CAPABILITIES = REGISTRY_CAPABILITIES;
 
 export const RISK_ORDER: Record<RiskLevel, number> = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };

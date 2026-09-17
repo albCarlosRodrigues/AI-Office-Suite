@@ -57,7 +57,9 @@ function resolveAgainstWorkspace(candidate: string, roots: readonly string[]) {
 }
 
 async function canonicalForRead(candidate: string, roots: readonly string[]) {
-  const canonical = await realpath(resolveAgainstWorkspace(candidate, roots));
+  const absolute = resolveAgainstWorkspace(candidate, roots);
+  if (!guardPath(absolute, roots).allowed) throw new Error("PATH_DENIED");
+  const canonical = await realpath(absolute);
   if (!guardPath(canonical, roots).allowed) throw new Error("PATH_DENIED");
   return canonical;
 }
@@ -541,11 +543,41 @@ export function createLocalToolHandlers(allowedRoots: readonly string[]): Regist
         throw error;
       }
 
+      const info = await stat(file);
+
+      if (info.isDirectory()) {
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify(
+            {
+              type: "directory",
+              path: file,
+              exists: true,
+              entries: await directorySummary(file),
+            },
+            null,
+            2,
+          ),
+        };
+      }
+
       const content = await readFile(file);
+      const truncated = content.byteLength > MAX_OUTPUT_BYTES;
 
       return {
         exitCode: 0,
-        stdout: content,
+        stdout: JSON.stringify(
+          {
+            type: "file",
+            path: file,
+            exists: true,
+            bytes: content.byteLength,
+            truncated,
+            content: content.subarray(0, MAX_OUTPUT_BYTES).toString("utf8"),
+          },
+          null,
+          2,
+        ),
       };
     },
   };

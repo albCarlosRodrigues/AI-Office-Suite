@@ -87,7 +87,15 @@ it("worker asks manager through PRX, LocalAnt reads real fixture, worker fixes a
       idempotencyKey: "inspect",
     });
     const verified = await artifacts.get(read.stdoutArtifactRef!);
-    expect(new TextDecoder().decode(verified.content)).toBe("41");
+    const verifiedPayload = JSON.parse(new TextDecoder().decode(verified.content)) as {
+      type: "file" | "directory";
+      content?: string;
+    };
+
+    expect(verifiedPayload).toMatchObject({
+      type: "file",
+      content: "41",
+    });
     const decision = await manager.execute({
       missionId: "m",
       taskId: "t",

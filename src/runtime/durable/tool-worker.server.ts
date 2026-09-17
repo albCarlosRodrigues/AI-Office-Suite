@@ -5,6 +5,7 @@ import { DurableToolQueue } from "./tool-queue.server";
 import { addOutbox, audit, iso, metric } from "./helpers";
 import type { DurableToolRequest } from "./types";
 import { CancellationService } from "./cancellation-service.server";
+import { classifyRuntimeError } from "../errors/runtime-errors";
 
 export type CrashPoint =
   "afterClaim" | "afterExecution" | "afterResultSave" | "afterRequestComplete";
@@ -75,17 +76,24 @@ export class ToolExecutionWorker {
       // Thrown failures already use the same
       // DurableToolQueue.retry() path.
       if (result.status === "FAILED") {
-        const failureMessage =
-          `Tool ${request.toolId} returned FAILED ` +
-          `(exitCode=${String(result.exitCode)}, stderr=${result.stderrArtifactRef ?? "none"})`;
+        const failure =
+          result.error ??
+          ({
+            code: "UNCLASSIFIED_TOOL_FAILURE",
+            category: "TRANSIENT",
+            retryable: true,
+            message:
+              `Tool ${request.toolId} returned FAILED without structured error metadata ` +
+              `(exitCode=${String(result.exitCode)}, stderr=${result.stderrArtifactRef ?? "none"})`,
+          } as const);
 
         await this.queue.retry(
           request.toolCallId,
           request.claimToken!,
           request.claimVersion,
-          "tool_failed",
-          failureMessage,
-          true,
+          `${failure.category}:${failure.code}`,
+          failure.message,
+          failure.retryable,
           now,
         );
 
@@ -199,17 +207,14 @@ export class ToolExecutionWorker {
         });
         return null;
       }
-      const code =
-        typeof error === "object" && error && "code" in error
-          ? String(error.code)
-          : "process_unavailable";
+      const classified = classifyRuntimeError(error);
       await this.queue.retry(
         request.toolCallId,
         request.claimToken!,
         request.claimVersion,
-        code,
-        error instanceof Error ? error.message : String(error),
-        retryableCodes.has(code),
+        `${classified.category}:${classified.code}`,
+        classified.message,
+        classified.retryable,
         now,
       );
       return null;

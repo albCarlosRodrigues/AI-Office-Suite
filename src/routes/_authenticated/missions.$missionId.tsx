@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Evidence, Task, Command, Agent, Meeting } from "@/types/domain";
 import { cn } from "@/lib/utils";
+import { taskAttemptCounter } from "@/runtime/attempt-counters";
 
 export const Route = createFileRoute("/_authenticated/missions/$missionId")({
   head: () => ({
@@ -390,6 +391,7 @@ function TaskCard({
   const [open, setOpen] = useState(false);
   const evidence = (task.evidence ?? []) as unknown as Evidence[];
   const deps = task.depends_on.map((id) => allTasks.find((t) => t.id === id)?.code ?? "?");
+  const attempt = taskAttemptCounter(task.retries, task.max_retries);
   return (
     <div className="panel">
       <button
@@ -407,7 +409,7 @@ function TaskCard({
           <p className="truncate text-xs text-muted-foreground">
             {agent?.name ?? "sem responsável"}
             {deps.length > 0 && ` · após ${deps.join(", ")}`}
-            {task.retries > 0 && ` · tentativa ${task.retries}/${task.max_retries}`}
+            {task.retries > 0 && ` · tentativa ${attempt.current}/${attempt.max}`}
             {evidence.length > 0 && ` · ${evidence.length} evidência(s)`}
           </p>
         </div>

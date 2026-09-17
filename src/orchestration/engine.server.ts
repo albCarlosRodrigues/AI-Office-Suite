@@ -1828,6 +1828,7 @@ export class OrchestrationEngine {
             status: "FAILED",
             summary:
               `RUNTIME_TOOL_FAILED: ${failedRequest.toolId}: ` +
+              `${failedRequest.failureCode ? `[${failedRequest.failureCode}] ` : ""}` +
               `${failedRequest.failureMessage ?? failedRequest.status}`,
           };
 
@@ -2391,12 +2392,18 @@ export class OrchestrationEngine {
       const retries = task.retries + 1;
       const resultSummary = result.summary ?? "";
       const failMsg = `${result.status}: ${resultSummary}`;
+      const deterministicRuntimeFailure =
+        /RUNTIME_TOOL_FAILED:.*\[(?:CORRECTABLE|PERMISSION|POLICY|FATAL):/.test(resultSummary);
       if (command)
         await this.db
           .from("commands")
           .update({ status: result.status, completed_at: new Date().toISOString() })
           .eq("id", command.id);
-      if (retries <= task.max_retries && result.status === "FAILED") {
+      if (
+        retries <= task.max_retries &&
+        result.status === "FAILED" &&
+        !deterministicRuntimeFailure
+      ) {
         await this.db
           .from("tasks")
           .update({
@@ -2457,7 +2464,7 @@ export class OrchestrationEngine {
             result.status === "BLOCKED" || result.status === "NEEDS_CLARIFICATION"
               ? "blocked"
               : "failed",
-          retries,
+          retries: Math.min(retries, task.max_retries),
           evidence: evidence as never,
           result: failMsg,
           completed_at: new Date().toISOString(),
