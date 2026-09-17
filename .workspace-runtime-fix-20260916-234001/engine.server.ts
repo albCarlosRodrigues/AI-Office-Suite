@@ -903,31 +903,9 @@ export class OrchestrationEngine {
       taskContracts.push(taskContract);
       index++;
     }
-
-    const previousMissionContract =
-      mission.mission_contract &&
-      typeof mission.mission_contract === "object" &&
-      !Array.isArray(mission.mission_contract)
-        ? (mission.mission_contract as Record<string, unknown>)
-        : {};
-
-    const repository =
-      typeof previousMissionContract["repository"] === "string" &&
-      previousMissionContract["repository"].trim()
-        ? previousMissionContract["repository"].trim()
-        : null;
-
-    const workspace =
-      typeof previousMissionContract["workspace"] === "string" &&
-      previousMissionContract["workspace"].trim()
-        ? previousMissionContract["workspace"].trim()
-        : null;
-
     const missionContract = MissionContractSchema.parse({
       missionId: mission.id,
       goal: mission.goal,
-      repository,
-      workspace,
       scope: [mission.title],
       nonGoals: [],
       constraints: this.policies.filter((policy) => policy.enforced).map((policy) => policy.rule),

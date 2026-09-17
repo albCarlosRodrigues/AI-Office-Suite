@@ -39,145 +39,6 @@ const PENDING_RUNTIME_TOOL_STATUSES = new Set([
   "RUNNING",
 ]);
 
-function durableRiskToOperational(
-  riskLevel: number,
-): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
-  if (riskLevel >= 4) return "CRITICAL";
-  if (riskLevel >= 3) return "HIGH";
-  if (riskLevel >= 2) return "MEDIUM";
-  return "LOW";
-}
-
-/**
- * Durable approvals are the execution authority.
- *
- * The UI still reads approval_requests from the operational database, so every
- * durable approval must have a projection there using the SAME id.
- *
- * This projection is not a second authorization decision. The durable store
- * remains authoritative.
- */
-async function syncDurableApprovalsToOperationalDb(
-  missionId: string,
-) {
-  const store = runtimeDurableStore();
-  const snapshot = await store.snapshot();
-
-  const approvals = snapshot.approvals.filter(
-    (approval) => approval.missionId === missionId,
-  );
-
-  if (approvals.length === 0) return 0;
-
-  const { data: mission, error: missionError } =
-    await localDbServer
-      .from("missions")
-      .select("id,organization_id")
-      .eq("id", missionId)
-      .single();
-
-  if (missionError || !mission) {
-    throw new Error(
-      missionError?.message ??
-        `Mission ${missionId} not found while syncing durable approvals`,
-    );
-  }
-
-  let synced = 0;
-
-  for (const approval of approvals) {
-    const request = snapshot.toolRequests.find(
-      (item) =>
-        item.toolCallId === approval.toolCallId,
-    );
-
-    const operationalStatus =
-      approval.status === "CANCELLED"
-        ? "EXPIRED"
-        : approval.status;
-
-    const { error } = await localDbServer
-      .from("approval_requests")
-      .upsert({
-        id: approval.approvalId,
-
-        organization_id:
-          mission.organization_id,
-
-        mission_id:
-          approval.missionId,
-
-        task_id:
-          approval.taskId,
-
-        agent_id:
-          approval.requester,
-
-        kind:
-          "TOOL_EXECUTION",
-
-        action:
-          `Executar ferramenta ${approval.toolId}`,
-
-        reason:
-          approval.reason,
-
-        required_permissions: [],
-
-        requested_action: {
-          durable: true,
-          toolCallId:
-            approval.toolCallId,
-          toolId:
-            approval.toolId,
-          arguments:
-            request?.arguments ?? {},
-          inputHash:
-            approval.inputHash,
-          policyVersion:
-            approval.policyVersion,
-        },
-
-        risk_level:
-          durableRiskToOperational(
-            approval.riskLevel,
-          ),
-
-        status:
-          operationalStatus,
-
-        approval_scope:
-          approval.scope,
-
-        always_allow:
-          approval.status === "APPROVED" &&
-          approval.scope === "PERSISTENT",
-
-        tool_id:
-          approval.toolId,
-
-        resolved_at:
-          approval.decisionAt,
-
-        resolved_by:
-          approval.decisionBy,
-
-        resolution_note:
-          approval.decision,
-      } as never);
-
-    if (error) {
-      throw new Error(
-        `Failed to sync durable approval ${approval.approvalId}: ${error.message}`,
-      );
-    }
-
-    synced += 1;
-  }
-
-  return synced;
-}
-
 export const stepMission = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ missionId: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
@@ -185,12 +46,6 @@ export const stepMission = createServerFn({ method: "POST" })
     // queue here so model tool requests are actually executed instead of
     // remaining READY forever.
     await runDurableToolWorker(20);
-
-    // Project durable approvals into the operational database so the human
-    // approval UI always sees the same approval id used by the runtime.
-    await syncDurableApprovalsToOperationalDb(
-      data.missionId,
-    );
 
     // A mission waiting for deterministic tool execution must not consume a
     // mission step. The next pacemaker tick will continue pumping the queue.
@@ -225,65 +80,6 @@ export const resumeMission = createServerFn({ method: "POST" })
     return engine.resume(data.missionId);
   });
 
-async function resetDurableMissionForRetry(
-  missionId: string,
-) {
-  const store = runtimeDurableStore();
-
-  await store.transaction((state) => {
-    const oldRequests = state.toolRequests.filter(
-      (request) => request.missionId === missionId,
-    );
-
-    const toolCallIds = new Set(
-      oldRequests.map((request) => request.toolCallId),
-    );
-
-    const idempotencyKeys = new Set(
-      oldRequests.map((request) => request.idempotencyKey),
-    );
-
-    state.missions = state.missions.filter(
-      (mission) => mission.id !== missionId,
-    );
-
-    state.tasks = state.tasks.filter(
-      (task) => task.missionId !== missionId,
-    );
-
-    state.toolRequests = state.toolRequests.filter(
-      (request) => request.missionId !== missionId,
-    );
-
-    state.toolResults = state.toolResults.filter(
-      (result) => !toolCallIds.has(result.toolCallId),
-    );
-
-    state.approvals = state.approvals.filter(
-      (approval) => approval.missionId !== missionId,
-    );
-
-    state.cancellations = state.cancellations.filter(
-      (cancellation) => cancellation.missionId !== missionId,
-    );
-
-    state.budgetReservations = state.budgetReservations.filter(
-      (reservation) => reservation.missionId !== missionId,
-    );
-
-    state.idempotencyRecords = state.idempotencyRecords.filter(
-      (record) => !idempotencyKeys.has(record.idempotencyKey),
-    );
-  });
-
-  await localDbServer
-    .from("approval_requests")
-    .update({
-      status: "EXPIRED",
-    })
-    .eq("mission_id", missionId)
-    .eq("status", "PENDING");
-}
 export const retryMission = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ missionId: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
@@ -301,15 +97,8 @@ export const retryMission = createServerFn({ method: "POST" })
       throw new Error(`Only a FAILED mission can be retried; current status is ${mission.status}`);
     }
 
-    await resetDurableMissionForRetry(
-      data.missionId,
-    );
-
     const engine = await makeEngine();
-
-    return engine.start(
-      data.missionId,
-    );
+    return engine.start(data.missionId);
   });
 export const stopMission = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ missionId: z.string().uuid() }).parse(d))
@@ -363,29 +152,9 @@ export const resolveApproval = createServerFn({ method: "POST" })
       );
       await localDbServer
         .from("approval_requests")
-        .update({
-          status: data.decision,
-          approval_scope: data.scope,
-          resolved_by: LOCAL_OPERATOR_ID,
-          resolved_at: new Date().toISOString(),
-          resolution_note: data.note,
-        })
+        .update({ status: data.decision })
         .eq("id", data.approvalId);
-
-      // APPROVED moves the durable request to READY. Pump the worker now
-      // instead of waiting for an unrelated future scheduler tick.
-      if (data.decision === "APPROVED") {
-        await runDurableToolWorker(20);
-      }
-
-      await syncDurableApprovalsToOperationalDb(
-        approval.missionId,
-      );
-
-      return {
-        ok: true,
-        status: resolved.status,
-      };
+      return { ok: true, status: resolved.status };
     }
     const engine = await makeEngine();
     return engine.resolveApproval(data.approvalId, data.decision, data.note, data.scope);

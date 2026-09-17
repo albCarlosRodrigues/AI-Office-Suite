@@ -225,65 +225,6 @@ export const resumeMission = createServerFn({ method: "POST" })
     return engine.resume(data.missionId);
   });
 
-async function resetDurableMissionForRetry(
-  missionId: string,
-) {
-  const store = runtimeDurableStore();
-
-  await store.transaction((state) => {
-    const oldRequests = state.toolRequests.filter(
-      (request) => request.missionId === missionId,
-    );
-
-    const toolCallIds = new Set(
-      oldRequests.map((request) => request.toolCallId),
-    );
-
-    const idempotencyKeys = new Set(
-      oldRequests.map((request) => request.idempotencyKey),
-    );
-
-    state.missions = state.missions.filter(
-      (mission) => mission.id !== missionId,
-    );
-
-    state.tasks = state.tasks.filter(
-      (task) => task.missionId !== missionId,
-    );
-
-    state.toolRequests = state.toolRequests.filter(
-      (request) => request.missionId !== missionId,
-    );
-
-    state.toolResults = state.toolResults.filter(
-      (result) => !toolCallIds.has(result.toolCallId),
-    );
-
-    state.approvals = state.approvals.filter(
-      (approval) => approval.missionId !== missionId,
-    );
-
-    state.cancellations = state.cancellations.filter(
-      (cancellation) => cancellation.missionId !== missionId,
-    );
-
-    state.budgetReservations = state.budgetReservations.filter(
-      (reservation) => reservation.missionId !== missionId,
-    );
-
-    state.idempotencyRecords = state.idempotencyRecords.filter(
-      (record) => !idempotencyKeys.has(record.idempotencyKey),
-    );
-  });
-
-  await localDbServer
-    .from("approval_requests")
-    .update({
-      status: "EXPIRED",
-    })
-    .eq("mission_id", missionId)
-    .eq("status", "PENDING");
-}
 export const retryMission = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ missionId: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
@@ -301,15 +242,8 @@ export const retryMission = createServerFn({ method: "POST" })
       throw new Error(`Only a FAILED mission can be retried; current status is ${mission.status}`);
     }
 
-    await resetDurableMissionForRetry(
-      data.missionId,
-    );
-
     const engine = await makeEngine();
-
-    return engine.start(
-      data.missionId,
-    );
+    return engine.start(data.missionId);
   });
 export const stopMission = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ missionId: z.string().uuid() }).parse(d))

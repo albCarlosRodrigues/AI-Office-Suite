@@ -30,8 +30,6 @@ export type TaskContract = z.infer<typeof TaskContractSchema>;
 export const MissionContractSchema = z.object({
   missionId: z.string().min(1),
   goal: z.string().min(1),
-  repository: z.string().trim().min(1).nullable().optional(),
-  workspace: z.string().trim().min(1).nullable().optional(),
   scope: z.array(z.string()),
   nonGoals: z.array(z.string()),
   constraints: z.array(z.string()),
