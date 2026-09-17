@@ -1,12 +1,40 @@
-import type { Agent, AgentStatus, MissionEvent, Meeting } from "@/types/domain";
+import type {
+  Agent,
+  AgentStatus,
+  MissionEvent,
+  Meeting,
+} from "@/types/domain";
+
+export type OfficeAnimationTestAction =
+  | "idle"
+  | "thinking"
+  | "working"
+  | "meeting"
+  | "whiteboard"
+  | "water"
+  | "coffee"
+  | "sofa"
+  | "armchair"
+  | "supervisor"
+  | "home"
+  | "walk-up"
+  | "walk-down"
+  | "walk-left"
+  | "walk-right"
+  | "talk"
+  | "reset";
 
 /**
- * OfficeEventBus — in-memory bridge between real orchestration data
- * (Supabase realtime / query refetches) and the Phaser office scene.
- * The office NEVER invents state: it only reacts to events emitted here.
+ * OfficeEventBus
+ *
+ * Os eventos normais representam o estado real.
+ * debug:animation representa SOMENTE um override visual local.
  */
 export type OfficeEvent =
-  | { type: "agents:sync"; agents: Agent[] }
+  | {
+      type: "agents:sync";
+      agents: Agent[];
+    }
   | {
       type: "agent:status";
       agentId: string;
@@ -20,22 +48,51 @@ export type OfficeEvent =
       text: string;
       kind: string;
     }
-  | { type: "mission:event"; event: MissionEvent }
-  | { type: "meeting:changed"; meeting: Meeting }
-  | { type: "kill_switch"; active: boolean }
-  | { type: "focus:agent"; agentId: string | null };
+  | {
+      type: "mission:event";
+      event: MissionEvent;
+    }
+  | {
+      type: "meeting:changed";
+      meeting: Meeting;
+    }
+  | {
+      type: "kill_switch";
+      active: boolean;
+    }
+  | {
+      type: "debug:animation";
+      agentId: string;
+      action: OfficeAnimationTestAction;
+    }
+  | {
+      type: "focus:agent";
+      agentId: string | null;
+    };
 
-type Listener = (e: OfficeEvent) => void;
+type Listener =
+  (event: OfficeEvent) => void;
 
 class EventBus {
-  private listeners = new Set<Listener>();
+  private listeners =
+    new Set<Listener>();
+
   on(fn: Listener) {
     this.listeners.add(fn);
-    return () => this.listeners.delete(fn);
+
+    return () =>
+      this.listeners.delete(fn);
   }
-  emit(e: OfficeEvent) {
-    for (const l of this.listeners) l(e);
+
+  emit(event: OfficeEvent) {
+    for (
+      const listener
+      of this.listeners
+    ) {
+      listener(event);
+    }
   }
 }
 
-export const officeBus = new EventBus();
+export const officeBus =
+  new EventBus();

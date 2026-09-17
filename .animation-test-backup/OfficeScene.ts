@@ -64,45 +64,6 @@ const SOCIAL_SPOTS: Point[] = [
   { x: 14, y: 18 },
 ];
 
-/**
- * Destinos usados EXCLUSIVAMENTE pelo painel de teste.
- *
- * São tiles, não pixels.
- * OfficeGrid/nearestFree continua sendo responsável
- * por impedir destino dentro de colisões.
- */
-const DEBUG_SPOTS = {
-  whiteboard: {
-    point: { x: 3, y: 3 },
-    facing: "up" as Direction,
-  },
-
-  water: {
-    point: { x: 2, y: 12 },
-    facing: "left" as Direction,
-  },
-
-  coffee: {
-    point: { x: 3, y: 12 },
-    facing: "up" as Direction,
-  },
-
-  sofa: {
-    point: { x: 4, y: 7 },
-    facing: "up" as Direction,
-  },
-
-  armchair: {
-    point: { x: 14, y: 18 },
-    facing: "up" as Direction,
-  },
-
-  supervisor: {
-    point: { x: 11, y: 8 },
-    facing: "right" as Direction,
-  },
-};
-
 const IDLE_FRAME: Record<Direction, number> = { left: 0, up: 1, right: 2, down: 3 };
 const RUN_START: Record<Direction, number> = { left: 0, up: 6, right: 12, down: 18 };
 
@@ -132,13 +93,6 @@ class AgentActor {
    * um estado visual acionado pelo painel de testes.
    */
   testOverride = false;
-
-  /**
-   * Guarda qual acao foi forcada pelo painel.
-   *
-   * Nao representa o estado real do agente.
-   */
-  debugAction: string | null = null;
 
   constructor(
     public scene: OfficeScene,
@@ -261,230 +215,6 @@ class AgentActor {
         .fillCircle(point.x * TILE + TILE / 2, point.y * TILE + TILE / 2, 1.5);
   }
 
-  private playDirectionalAnimation(
-    textureSuffix: string,
-    animationSuffix: string,
-  ) {
-    const textureKey =
-      `${this.key}-${textureSuffix}`;
-
-    const animationKey =
-      `${this.key}-${animationSuffix}-${this.facing}`;
-
-    if (
-      this.sprite.texture.key !==
-      textureKey
-    ) {
-      this.sprite.stop();
-
-      this.sprite.setTexture(
-        textureKey,
-      );
-    }
-
-    if (
-      this.sprite.anims
-        .currentAnim?.key !==
-      animationKey
-    ) {
-      this.sprite.play(
-        animationKey,
-        true,
-      );
-    }
-  }
-
-  private playGlobalAnimation(
-    textureSuffix: string,
-    animationSuffix: string,
-  ) {
-    const textureKey =
-      `${this.key}-${textureSuffix}`;
-
-    const animationKey =
-      `${this.key}-${animationSuffix}-loop`;
-
-    if (
-      this.sprite.texture.key !==
-      textureKey
-    ) {
-      this.sprite.stop();
-
-      this.sprite.setTexture(
-        textureKey,
-      );
-    }
-
-    if (
-      this.sprite.anims
-        .currentAnim?.key !==
-      animationKey
-    ) {
-      this.sprite.play(
-        animationKey,
-        true,
-      );
-    }
-  }
-
-  /**
-   * Decide qual sprite REAL deve aparecer
-   * quando o agente não estiver andando.
-   *
-   * Em modo de teste, debugAction possui
-   * prioridade total sobre status real.
-   */
-  private playStationaryAnimation() {
-    this.sprite.y =
-      this.tile.y *
-        TILE +
-      TILE;
-
-    const action =
-      this.testOverride
-        ? this.debugAction
-        : null;
-
-    if (action) {
-      switch (action) {
-        case "working":
-          this.playDirectionalAnimation(
-            "work",
-            "work",
-          );
-
-          return;
-
-        case "thinking":
-        case "whiteboard":
-          this.playDirectionalAnimation(
-            "think",
-            "think",
-          );
-
-          return;
-
-        case "sofa":
-        case "armchair":
-        case "meeting":
-          this.playDirectionalAnimation(
-            "sit",
-            "sit",
-          );
-
-          return;
-
-        case "water":
-          this.playGlobalAnimation(
-            "water",
-            "water",
-          );
-
-          return;
-
-        case "coffee":
-          this.playGlobalAnimation(
-            "coffee",
-            "coffee",
-          );
-
-          return;
-
-        case "talk":
-        case "supervisor":
-          this.playGlobalAnimation(
-            "talk",
-            "talk",
-          );
-
-          return;
-
-        case "idle":
-        case "home":
-          this.playDirectionalAnimation(
-            "idle-anim",
-            "idle-loop",
-          );
-
-          return;
-      }
-    }
-
-    /*
-     * Funcionamento real do escritório.
-     */
-    switch (this.status) {
-      case "WORKING":
-        this.playDirectionalAnimation(
-          "work",
-          "work",
-        );
-
-        return;
-
-      case "THINKING":
-      case "REVIEWING":
-        this.playDirectionalAnimation(
-          "think",
-          "think",
-        );
-
-        return;
-
-      case "MEETING":
-        this.playDirectionalAnimation(
-          "sit",
-          "sit",
-        );
-
-        return;
-
-      case "DELEGATING":
-        this.playGlobalAnimation(
-          "talk",
-          "talk",
-        );
-
-        return;
-
-      case "IDLE":
-      case "WAITING":
-        this.playDirectionalAnimation(
-          "idle-anim",
-          "idle-loop",
-        );
-
-        return;
-    }
-
-    /*
-     * Fallback estático.
-     */
-    if (
-      this.sprite.anims
-        .isPlaying
-    ) {
-      this.sprite.stop();
-    }
-
-    const texture =
-      `${this.key}-idle`;
-
-    if (
-      this.sprite.texture.key !==
-      texture
-    ) {
-      this.sprite.setTexture(
-        texture,
-      );
-    }
-
-    this.sprite.setFrame(
-      IDLE_FRAME[
-        this.facing
-      ],
-    );
-  }
   update(time: number, delta: number) {
     const dt = delta / 1000;
     if (this.path.length) {
@@ -512,24 +242,21 @@ class AgentActor {
       if (this.sprite.texture.key !== `${this.key}-run`) this.sprite.setTexture(`${this.key}-run`);
       if (this.sprite.anims.currentAnim?.key !== animation) this.sprite.play(animation);
     } else {
-      this.playStationaryAnimation();
-
-      const visual =
-        STATUS_VISUALS[
-          this.status
-        ];
-
-      this.bubble.setAlpha(
-        visual.animation ===
-          "alert"
-          ? 0.6 +
-              0.4 *
-                Math.sin(
-                  time / 120,
-                )
-          : 1,
-      );
-      if (this.status === "IDLE" && !this.testOverride && !this.scene.killSwitch && time > this.nextWanderCheck) {
+      if (this.sprite.anims.isPlaying) this.sprite.stop();
+      if (this.sprite.texture.key !== `${this.key}-idle`)
+        this.sprite.setTexture(`${this.key}-idle`);
+      const visual = STATUS_VISUALS[this.status];
+      this.bob += dt * (visual.animation === "typing" ? 10 : visual.animation === "talk" ? 6 : 2);
+      const bobY =
+        visual.animation === "typing"
+          ? Math.round(Math.sin(this.bob) * 0.5)
+          : visual.animation === "talk"
+            ? Math.round(Math.sin(this.bob))
+            : 0;
+      this.sprite.setFrame(IDLE_FRAME[this.facing]);
+      this.sprite.y = this.tile.y * TILE + TILE + bobY;
+      this.bubble.setAlpha(visual.animation === "alert" ? 0.6 + 0.4 * Math.sin(time / 120) : 1);
+      if (this.status === "IDLE" && !this.scene.killSwitch && time > this.nextWanderCheck) {
         this.nextWanderCheck = time + 12000 + Math.random() * 15000;
         if (this.wanderUntil && time > this.wanderUntil) {
           this.wanderUntil = 0;
@@ -552,14 +279,6 @@ class AgentActor {
   }
 
   onArrive() {
-    if (
-      this.testOverride &&
-      this.debugAction
-    ) {
-      this.scene.applyDebugArrivalPose(
-        this,
-      );
-    }
     this.scene.tweens.add({
       targets: this.route,
       alpha: 0,
@@ -626,64 +345,14 @@ export class OfficeScene extends Phaser.Scene {
       frameHeight: 48,
     });
     for (const character of MODERN_CHARACTERS) {
-      const config = {
+      this.load.spritesheet(`${character.id}-idle`, character.idleUrl, {
         frameWidth: character.frameWidth,
         frameHeight: character.frameHeight,
-      };
-
-      this.load.spritesheet(
-        `${character.id}-idle`,
-        character.idleUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-idle-anim`,
-        character.idleAnimUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-run`,
-        character.runUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-work`,
-        character.workUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-think`,
-        character.thinkUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-sit`,
-        character.sitUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-water`,
-        character.waterUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-coffee`,
-        character.coffeeUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-talk`,
-        character.talkUrl,
-        config,
-      );
+      });
+      this.load.spritesheet(`${character.id}-run`, character.runUrl, {
+        frameWidth: character.frameWidth,
+        frameHeight: character.frameHeight,
+      });
     }
   }
 
@@ -777,152 +446,18 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private createCharacterAnimations() {
-    const directional = [
-      {
-        texture: "run",
-        animation: "walk",
-        frameRate: 10,
-      },
-
-      {
-        texture: "idle-anim",
-        animation: "idle-loop",
-        frameRate: 5,
-      },
-
-      {
-        texture: "work",
-        animation: "work",
-        frameRate: 7,
-      },
-
-      {
-        texture: "think",
-        animation: "think",
-        frameRate: 4,
-      },
-
-      {
-        texture: "sit",
-        animation: "sit",
-        frameRate: 4,
-      },
-    ] as const;
-
-    for (
-      const character
-      of MODERN_CHARACTERS
-    ) {
-      for (
-        const definition
-        of directional
-      ) {
-        for (
-          const direction
-          of [
-            "left",
-            "up",
-            "right",
-            "down",
-          ] as Direction[]
-        ) {
-          const start =
-            RUN_START[
-              direction
-            ];
-
-          const key =
-            `${character.id}-${definition.animation}-${direction}`;
-
-          if (
-            this.anims.exists(
-              key,
-            )
-          ) {
-            continue;
-          }
-
-          this.anims.create({
-            key,
-
-            frames:
-              Array.from(
-                {
-                  length: 6,
-                },
-
-                (
-                  _,
-                  index,
-                ) => ({
-                  key:
-                    `${character.id}-${definition.texture}`,
-
-                  frame:
-                    start +
-                    index,
-                }),
-              ),
-
-            frameRate:
-              definition.frameRate,
-
-            repeat: -1,
-          });
-        }
-      }
-
-      /*
-       * phone.png possui 9 frames.
-       *
-       * Esse movimento é utilizado por:
-       * - falar
-       * - beber água
-       * - beber café
-       *
-       * até adicionarmos sprites de bebida dedicados.
-       */
-      for (
-        const action
-        of [
-          "water",
-          "coffee",
-          "talk",
-        ] as const
-      ) {
-        const key =
-          `${character.id}-${action}-loop`;
-
-        if (
-          this.anims.exists(
-            key,
-          )
-        ) {
-          continue;
-        }
-
+    for (const character of MODERN_CHARACTERS) {
+      for (const direction of ["down", "up", "left", "right"] as Direction[]) {
+        const start = RUN_START[direction];
+        const key = `${character.id}-walk-${direction}`;
+        if (this.anims.exists(key)) continue;
         this.anims.create({
           key,
-
-          frames:
-            Array.from(
-              {
-                length: 9,
-              },
-
-              (
-                _,
-                frame,
-              ) => ({
-                key:
-                  `${character.id}-${action}`,
-
-                frame,
-              }),
-            ),
-
-          frameRate: 6,
-
+          frames: Array.from({ length: 6 }, (_, index) => ({
+            key: `${character.id}-run`,
+            frame: start + index,
+          })),
+          frameRate: 10,
           repeat: -1,
         });
       }
@@ -1016,7 +551,7 @@ export class OfficeScene extends Phaser.Scene {
         if (home.x !== actor.home.x || home.y !== actor.home.y) {
           actor.home = home;
           actor.homeFacing = seat.facing;
-          if (!actor.testOverride && agent.status !== "MEETING") actor.moveTo(home);
+          if (agent.status !== "MEETING") actor.moveTo(home);
         }
         if (
           !actor.testOverride &&
@@ -1036,24 +571,9 @@ export class OfficeScene extends Phaser.Scene {
     }
   }
 
-  setAgentStatus(
-    agentId: string,
-    status: AgentStatus,
-  ) {
-    const actor =
-      this.actors.get(agentId);
-
-    if (
-      actor &&
-      !actor.testOverride &&
-      actor.status !== status
-    ) {
-      this.applyStatus(
-        actor,
-        status,
-        false,
-      );
-    }
+  setAgentStatus(agentId: string, status: AgentStatus) {
+    const actor = this.actors.get(agentId);
+    if (actor && actor.status !== status) this.applyStatus(actor, status, false);
   }
 
   private applyStatus(actor: AgentActor, status: AgentStatus, initial: boolean) {
@@ -1119,137 +639,6 @@ export class OfficeScene extends Phaser.Scene {
    * Nenhum destes comandos altera Supabase, tarefa, missao ou
    * estado real do agente.
    */
-  applyDebugArrivalPose(
-    actor: AgentActor,
-  ) {
-    switch (
-      actor.debugAction
-    ) {
-      case "whiteboard":
-        actor.status =
-          "THINKING";
-
-        actor.facing =
-          DEBUG_SPOTS
-            .whiteboard
-            .facing;
-
-        actor.applyStatusVisual();
-
-        actor.say(
-          "[TESTE] Pensando no quadro",
-          2600,
-        );
-
-        break;
-
-      case "water":
-        actor.status =
-          "IDLE";
-
-        actor.facing =
-          DEBUG_SPOTS
-            .water
-            .facing;
-
-        actor.applyStatusVisual();
-
-        actor.say(
-          "[TESTE] Bebendo água",
-          2300,
-        );
-
-        break;
-
-      case "coffee":
-        actor.status =
-          "IDLE";
-
-        actor.facing =
-          DEBUG_SPOTS
-            .coffee
-            .facing;
-
-        actor.applyStatusVisual();
-
-        actor.say(
-          "[TESTE] Bebendo café",
-          2300,
-        );
-
-        break;
-
-      case "sofa":
-        actor.status =
-          "IDLE";
-
-        actor.facing =
-          DEBUG_SPOTS
-            .sofa
-            .facing;
-
-        actor.seated =
-          true;
-
-        actor.applyStatusVisual();
-
-        actor.say(
-          "[TESTE] Sofá",
-          2000,
-        );
-
-        break;
-
-      case "armchair":
-        actor.status =
-          "IDLE";
-
-        actor.facing =
-          DEBUG_SPOTS
-            .armchair
-            .facing;
-
-        actor.seated =
-          true;
-
-        actor.applyStatusVisual();
-
-        actor.say(
-          "[TESTE] Poltrona",
-          2000,
-        );
-
-        break;
-
-      case "supervisor":
-        actor.status =
-          "IDLE";
-
-        actor.applyStatusVisual();
-
-        actor.say(
-          "[TESTE] Informando o superior",
-          2600,
-        );
-
-        break;
-
-      case "home":
-        actor.status =
-          "IDLE";
-
-        actor.facing =
-          actor.homeFacing;
-
-        actor.seated =
-          true;
-
-        actor.applyStatusVisual();
-
-        break;
-    }
-  }
-
   testAnimation(agentId: string, action: string) {
     const actor = this.actors.get(agentId);
 

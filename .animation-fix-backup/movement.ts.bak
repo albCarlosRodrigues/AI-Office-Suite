@@ -1,0 +1,171 @@
+import type {
+  AgentAnimationState,
+  Direction,
+  Point,
+} from "./types";
+
+const DEFAULT_SPEED = 0.085;
+
+function distance(a: Point, b: Point): number {
+  return Math.hypot(
+    b.x - a.x,
+    b.y - a.y,
+  );
+}
+
+function getDirection(
+  from: Point,
+  to: Point,
+): Direction {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx >= 0 ? "right" : "left";
+  }
+
+  return dy >= 0 ? "down" : "up";
+}
+
+export function startRoute(
+  agent: AgentAnimationState,
+  route: Point[],
+): AgentAnimationState {
+  if (route.length === 0) {
+    return agent;
+  }
+
+  return {
+    ...agent,
+    activity: "walking",
+    route,
+    routeIndex: 1,
+  };
+}
+
+export function updateMovement(
+  agent: AgentAnimationState,
+  deltaSeconds: number,
+  speed = DEFAULT_SPEED,
+): {
+  agent: AgentAnimationState;
+  arrived: boolean;
+} {
+  /*
+   * Nenhuma rota ativa.
+   */
+  if (
+    agent.activity !== "walking" ||
+    agent.route.length === 0 ||
+    agent.routeIndex >= agent.route.length
+  ) {
+    return {
+      agent,
+      arrived: true,
+    };
+  }
+
+  /*
+   * Com noUncheckedIndexedAccess, route[index]
+   * pode tecnicamente ser undefined.
+   */
+  const target =
+    agent.route[agent.routeIndex];
+
+  if (!target) {
+    return {
+      arrived: true,
+
+      agent: {
+        ...agent,
+        routeIndex: agent.route.length,
+      },
+    };
+  }
+
+  const d = distance(
+    agent.position,
+    target,
+  );
+
+  const maxStep =
+    speed * Math.max(deltaSeconds, 0);
+
+  /*
+   * Chegou ao waypoint atual.
+   */
+  if (d <= maxStep) {
+    const nextIndex =
+      agent.routeIndex + 1;
+
+    const arrived =
+      nextIndex >= agent.route.length;
+
+    return {
+      arrived,
+
+      agent: {
+        ...agent,
+
+        position: {
+          x: target.x,
+          y: target.y,
+        },
+
+        routeIndex: nextIndex,
+
+        direction: getDirection(
+          agent.position,
+          target,
+        ),
+      },
+    };
+  }
+
+  /*
+   * Evita divisao por zero.
+   */
+  if (d === 0) {
+    return {
+      arrived: false,
+
+      agent: {
+        ...agent,
+        position: {
+          x: target.x,
+          y: target.y,
+        },
+        routeIndex:
+          agent.routeIndex + 1,
+      },
+    };
+  }
+
+  const ratio =
+    maxStep / d;
+
+  return {
+    arrived: false,
+
+    agent: {
+      ...agent,
+
+      direction: getDirection(
+        agent.position,
+        target,
+      ),
+
+      position: {
+        x:
+          agent.position.x +
+          (target.x - agent.position.x) *
+            ratio,
+
+        y:
+          agent.position.y +
+          (target.y - agent.position.y) *
+            ratio,
+      },
+    },
+  };
+}

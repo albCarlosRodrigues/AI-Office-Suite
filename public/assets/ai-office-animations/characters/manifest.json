@@ -1,0 +1,30 @@
+{
+  "frameWidth": 16,
+  "frameHeight": 32,
+
+  "directionOrder": [
+    "left",
+    "up",
+    "right",
+    "down"
+  ],
+
+  "directionFrames": 6,
+
+  "animations": {
+    "idle": "idle.png",
+    "idleAnimated": "idle-anim.png",
+    "walk": "run.png",
+    "working": "work.png",
+    "thinking": "think.png",
+    "sitting": "sit.png",
+    "water": "water.png",
+    "coffee": "coffee.png",
+    "talk": "talk.png"
+  },
+
+  "notes": {
+    "water": "temporary hand-to-face animation using phone sheet",
+    "coffee": "temporary hand-to-face animation using phone sheet"
+  }
+}

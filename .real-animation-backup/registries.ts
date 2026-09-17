@@ -207,94 +207,26 @@ export const STATUS_VISUALS: Record<AgentStatus, StatusVisual> = {
 export interface CharacterSpriteDef {
   id: string;
   name: string;
-
   idleUrl: string;
-  idleAnimUrl: string;
-
   runUrl: string;
-
-  workUrl: string;
-  thinkUrl: string;
-
-  sitUrl: string;
-
-  waterUrl: string;
-  coffeeUrl: string;
-
-  talkUrl: string;
-
   frameWidth: number;
   frameHeight: number;
 }
 
-const character = (
-  id: string,
-  name: string,
-  folder: string,
-): CharacterSpriteDef => {
-  const base =
-    `/assets/ai-office-animations/characters/${folder}`;
-
-  return {
-    id,
-    name,
-
-    idleUrl:
-      `${base}/idle.png`,
-
-    idleAnimUrl:
-      `${base}/idle-anim.png`,
-
-    runUrl:
-      `${base}/run.png`,
-
-    workUrl:
-      `${base}/work.png`,
-
-    thinkUrl:
-      `${base}/think.png`,
-
-    sitUrl:
-      `${base}/sit.png`,
-
-    waterUrl:
-      `${base}/water.png`,
-
-    coffeeUrl:
-      `${base}/coffee.png`,
-
-    talkUrl:
-      `${base}/talk.png`,
-
-    frameWidth: 16,
-    frameHeight: 32,
-  };
-};
+const character = (id: string, name: string): CharacterSpriteDef => ({
+  id,
+  name,
+  idleUrl: `/assets/modern-interiors/characters/${name}_idle_16x16.png`,
+  runUrl: `/assets/modern-interiors/characters/${name}_run_16x16.png`,
+  frameWidth: 16,
+  frameHeight: 32,
+});
 
 export const MODERN_CHARACTERS = [
-  character(
-    "modern-adam",
-    "Adam",
-    "adam",
-  ),
-
-  character(
-    "modern-alex",
-    "Alex",
-    "alex",
-  ),
-
-  character(
-    "modern-amelia",
-    "Amelia",
-    "amelia",
-  ),
-
-  character(
-    "modern-bob",
-    "Bob",
-    "bob",
-  ),
+  character("modern-adam", "Adam"),
+  character("modern-alex", "Alex"),
+  character("modern-amelia", "Amelia"),
+  character("modern-bob", "Bob"),
 ] as const;
 
 export function resolveCharacterSprite(id: string | null | undefined): CharacterSpriteDef {

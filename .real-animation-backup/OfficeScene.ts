@@ -261,230 +261,6 @@ class AgentActor {
         .fillCircle(point.x * TILE + TILE / 2, point.y * TILE + TILE / 2, 1.5);
   }
 
-  private playDirectionalAnimation(
-    textureSuffix: string,
-    animationSuffix: string,
-  ) {
-    const textureKey =
-      `${this.key}-${textureSuffix}`;
-
-    const animationKey =
-      `${this.key}-${animationSuffix}-${this.facing}`;
-
-    if (
-      this.sprite.texture.key !==
-      textureKey
-    ) {
-      this.sprite.stop();
-
-      this.sprite.setTexture(
-        textureKey,
-      );
-    }
-
-    if (
-      this.sprite.anims
-        .currentAnim?.key !==
-      animationKey
-    ) {
-      this.sprite.play(
-        animationKey,
-        true,
-      );
-    }
-  }
-
-  private playGlobalAnimation(
-    textureSuffix: string,
-    animationSuffix: string,
-  ) {
-    const textureKey =
-      `${this.key}-${textureSuffix}`;
-
-    const animationKey =
-      `${this.key}-${animationSuffix}-loop`;
-
-    if (
-      this.sprite.texture.key !==
-      textureKey
-    ) {
-      this.sprite.stop();
-
-      this.sprite.setTexture(
-        textureKey,
-      );
-    }
-
-    if (
-      this.sprite.anims
-        .currentAnim?.key !==
-      animationKey
-    ) {
-      this.sprite.play(
-        animationKey,
-        true,
-      );
-    }
-  }
-
-  /**
-   * Decide qual sprite REAL deve aparecer
-   * quando o agente não estiver andando.
-   *
-   * Em modo de teste, debugAction possui
-   * prioridade total sobre status real.
-   */
-  private playStationaryAnimation() {
-    this.sprite.y =
-      this.tile.y *
-        TILE +
-      TILE;
-
-    const action =
-      this.testOverride
-        ? this.debugAction
-        : null;
-
-    if (action) {
-      switch (action) {
-        case "working":
-          this.playDirectionalAnimation(
-            "work",
-            "work",
-          );
-
-          return;
-
-        case "thinking":
-        case "whiteboard":
-          this.playDirectionalAnimation(
-            "think",
-            "think",
-          );
-
-          return;
-
-        case "sofa":
-        case "armchair":
-        case "meeting":
-          this.playDirectionalAnimation(
-            "sit",
-            "sit",
-          );
-
-          return;
-
-        case "water":
-          this.playGlobalAnimation(
-            "water",
-            "water",
-          );
-
-          return;
-
-        case "coffee":
-          this.playGlobalAnimation(
-            "coffee",
-            "coffee",
-          );
-
-          return;
-
-        case "talk":
-        case "supervisor":
-          this.playGlobalAnimation(
-            "talk",
-            "talk",
-          );
-
-          return;
-
-        case "idle":
-        case "home":
-          this.playDirectionalAnimation(
-            "idle-anim",
-            "idle-loop",
-          );
-
-          return;
-      }
-    }
-
-    /*
-     * Funcionamento real do escritório.
-     */
-    switch (this.status) {
-      case "WORKING":
-        this.playDirectionalAnimation(
-          "work",
-          "work",
-        );
-
-        return;
-
-      case "THINKING":
-      case "REVIEWING":
-        this.playDirectionalAnimation(
-          "think",
-          "think",
-        );
-
-        return;
-
-      case "MEETING":
-        this.playDirectionalAnimation(
-          "sit",
-          "sit",
-        );
-
-        return;
-
-      case "DELEGATING":
-        this.playGlobalAnimation(
-          "talk",
-          "talk",
-        );
-
-        return;
-
-      case "IDLE":
-      case "WAITING":
-        this.playDirectionalAnimation(
-          "idle-anim",
-          "idle-loop",
-        );
-
-        return;
-    }
-
-    /*
-     * Fallback estático.
-     */
-    if (
-      this.sprite.anims
-        .isPlaying
-    ) {
-      this.sprite.stop();
-    }
-
-    const texture =
-      `${this.key}-idle`;
-
-    if (
-      this.sprite.texture.key !==
-      texture
-    ) {
-      this.sprite.setTexture(
-        texture,
-      );
-    }
-
-    this.sprite.setFrame(
-      IDLE_FRAME[
-        this.facing
-      ],
-    );
-  }
   update(time: number, delta: number) {
     const dt = delta / 1000;
     if (this.path.length) {
@@ -512,23 +288,20 @@ class AgentActor {
       if (this.sprite.texture.key !== `${this.key}-run`) this.sprite.setTexture(`${this.key}-run`);
       if (this.sprite.anims.currentAnim?.key !== animation) this.sprite.play(animation);
     } else {
-      this.playStationaryAnimation();
-
-      const visual =
-        STATUS_VISUALS[
-          this.status
-        ];
-
-      this.bubble.setAlpha(
-        visual.animation ===
-          "alert"
-          ? 0.6 +
-              0.4 *
-                Math.sin(
-                  time / 120,
-                )
-          : 1,
-      );
+      if (this.sprite.anims.isPlaying) this.sprite.stop();
+      if (this.sprite.texture.key !== `${this.key}-idle`)
+        this.sprite.setTexture(`${this.key}-idle`);
+      const visual = STATUS_VISUALS[this.status];
+      this.bob += dt * (visual.animation === "typing" ? 10 : visual.animation === "talk" ? 6 : 2);
+      const bobY =
+        visual.animation === "typing"
+          ? Math.round(Math.sin(this.bob) * 0.5)
+          : visual.animation === "talk"
+            ? Math.round(Math.sin(this.bob))
+            : 0;
+      this.sprite.setFrame(IDLE_FRAME[this.facing]);
+      this.sprite.y = this.tile.y * TILE + TILE + bobY;
+      this.bubble.setAlpha(visual.animation === "alert" ? 0.6 + 0.4 * Math.sin(time / 120) : 1);
       if (this.status === "IDLE" && !this.testOverride && !this.scene.killSwitch && time > this.nextWanderCheck) {
         this.nextWanderCheck = time + 12000 + Math.random() * 15000;
         if (this.wanderUntil && time > this.wanderUntil) {
@@ -626,64 +399,14 @@ export class OfficeScene extends Phaser.Scene {
       frameHeight: 48,
     });
     for (const character of MODERN_CHARACTERS) {
-      const config = {
+      this.load.spritesheet(`${character.id}-idle`, character.idleUrl, {
         frameWidth: character.frameWidth,
         frameHeight: character.frameHeight,
-      };
-
-      this.load.spritesheet(
-        `${character.id}-idle`,
-        character.idleUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-idle-anim`,
-        character.idleAnimUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-run`,
-        character.runUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-work`,
-        character.workUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-think`,
-        character.thinkUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-sit`,
-        character.sitUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-water`,
-        character.waterUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-coffee`,
-        character.coffeeUrl,
-        config,
-      );
-
-      this.load.spritesheet(
-        `${character.id}-talk`,
-        character.talkUrl,
-        config,
-      );
+      });
+      this.load.spritesheet(`${character.id}-run`, character.runUrl, {
+        frameWidth: character.frameWidth,
+        frameHeight: character.frameHeight,
+      });
     }
   }
 
@@ -777,152 +500,18 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private createCharacterAnimations() {
-    const directional = [
-      {
-        texture: "run",
-        animation: "walk",
-        frameRate: 10,
-      },
-
-      {
-        texture: "idle-anim",
-        animation: "idle-loop",
-        frameRate: 5,
-      },
-
-      {
-        texture: "work",
-        animation: "work",
-        frameRate: 7,
-      },
-
-      {
-        texture: "think",
-        animation: "think",
-        frameRate: 4,
-      },
-
-      {
-        texture: "sit",
-        animation: "sit",
-        frameRate: 4,
-      },
-    ] as const;
-
-    for (
-      const character
-      of MODERN_CHARACTERS
-    ) {
-      for (
-        const definition
-        of directional
-      ) {
-        for (
-          const direction
-          of [
-            "left",
-            "up",
-            "right",
-            "down",
-          ] as Direction[]
-        ) {
-          const start =
-            RUN_START[
-              direction
-            ];
-
-          const key =
-            `${character.id}-${definition.animation}-${direction}`;
-
-          if (
-            this.anims.exists(
-              key,
-            )
-          ) {
-            continue;
-          }
-
-          this.anims.create({
-            key,
-
-            frames:
-              Array.from(
-                {
-                  length: 6,
-                },
-
-                (
-                  _,
-                  index,
-                ) => ({
-                  key:
-                    `${character.id}-${definition.texture}`,
-
-                  frame:
-                    start +
-                    index,
-                }),
-              ),
-
-            frameRate:
-              definition.frameRate,
-
-            repeat: -1,
-          });
-        }
-      }
-
-      /*
-       * phone.png possui 9 frames.
-       *
-       * Esse movimento é utilizado por:
-       * - falar
-       * - beber água
-       * - beber café
-       *
-       * até adicionarmos sprites de bebida dedicados.
-       */
-      for (
-        const action
-        of [
-          "water",
-          "coffee",
-          "talk",
-        ] as const
-      ) {
-        const key =
-          `${character.id}-${action}-loop`;
-
-        if (
-          this.anims.exists(
-            key,
-          )
-        ) {
-          continue;
-        }
-
+    for (const character of MODERN_CHARACTERS) {
+      for (const direction of ["down", "up", "left", "right"] as Direction[]) {
+        const start = RUN_START[direction];
+        const key = `${character.id}-walk-${direction}`;
+        if (this.anims.exists(key)) continue;
         this.anims.create({
           key,
-
-          frames:
-            Array.from(
-              {
-                length: 9,
-              },
-
-              (
-                _,
-                frame,
-              ) => ({
-                key:
-                  `${character.id}-${action}`,
-
-                frame,
-              }),
-            ),
-
-          frameRate: 6,
-
+          frames: Array.from({ length: 6 }, (_, index) => ({
+            key: `${character.id}-run`,
+            frame: start + index,
+          })),
+          frameRate: 10,
           repeat: -1,
         });
       }
