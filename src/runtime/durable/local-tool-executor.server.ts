@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import type { DurableExecutionAuthorizer } from "../access-control/types";
 import type { ArtifactSink, ToolExecutionGateway } from "../tools/gateway";
 import type { ToolResult } from "../tools/types";
 import type { DurableToolExecutor } from "./tool-worker.server";
@@ -12,9 +13,25 @@ export class DurableLocalToolExecutor implements DurableToolExecutor {
       approved: boolean,
     ) => ToolExecutionGateway,
     private readonly artifacts: ArtifactSink,
+    private readonly authorizer?: DurableExecutionAuthorizer,
   ) {}
 
-  execute(request: DurableToolRequest, approved: boolean, signal?: AbortSignal) {
+  async execute(request: DurableToolRequest, approved: boolean, signal?: AbortSignal) {
+    if (this.authorizer) {
+      const decision = await this.authorizer.authorize(request);
+      if (decision.effect !== "ALLOW") {
+        const error = Object.assign(
+          new Error(`AUTHORIZATION_${decision.effect}:${decision.reasonCode}`),
+          {
+            code: "policy_denied",
+            decisionId: decision.decisionId,
+            authorizationEffect: decision.effect,
+          },
+        );
+        throw error;
+      }
+    }
+
     return this.gatewayFactory(request, approved).execute(
       {
         toolCallId: request.toolCallId,

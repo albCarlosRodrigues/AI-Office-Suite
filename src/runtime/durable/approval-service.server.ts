@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { canonicalToolId } from "@/permissions/tool-registry";
 import { DurableRuntimeStore } from "./store.server";
 import { addOutbox, audit, iso, metric, plusMs } from "./helpers";
 import type { ApprovalScope, DurableApproval } from "./types";
@@ -29,6 +30,7 @@ export class DurableApprovalService {
       const approval: DurableApproval = {
         approvalId: randomUUID(),
         ...input,
+        toolId: canonicalToolId(input.toolId),
         status: "PENDING",
         requestedAt: iso(now),
         expiresAt: plusMs(input.ttlMs ?? 86_400_000, now),
@@ -68,7 +70,7 @@ export class DurableApprovalService {
         throw new Error("APPROVAL_EXPIRED");
       }
       if (
-        approval.toolId !== approvedSnapshot.toolId ||
+        canonicalToolId(approval.toolId) !== canonicalToolId(approvedSnapshot.toolId) ||
         approval.inputHash !== approvedSnapshot.inputHash ||
         approval.riskLevel !== approvedSnapshot.riskLevel ||
         approval.policyVersion !== approvedSnapshot.policyVersion
@@ -97,19 +99,27 @@ export class DurableApprovalService {
     });
   }
 
-  findReusable(missionId: string, toolId: string, inputHash: string, policyVersion: string) {
-    return this.store
-      .snapshot()
-      .then((state) =>
-        state.approvals.find(
-          (item) =>
-            item.status === "APPROVED" &&
-            item.toolId === toolId &&
-            item.inputHash === inputHash &&
-            item.policyVersion === policyVersion &&
-            item.scope !== "ONCE" &&
-            (item.scope === "PERSISTENT" || item.missionId === missionId),
-        ),
-      );
+  findReusable(
+    missionId: string,
+    toolId: string,
+    inputHash: string,
+    policyVersion: string,
+    requester?: string,
+    now = Date.now(),
+  ) {
+    const canonicalId = canonicalToolId(toolId);
+    return this.store.snapshot().then((state) =>
+      state.approvals.find(
+        (item) =>
+          item.status === "APPROVED" &&
+          new Date(item.expiresAt).getTime() > now &&
+          canonicalToolId(item.toolId) === canonicalId &&
+          item.inputHash === inputHash &&
+          item.policyVersion === policyVersion &&
+          (!requester || !item.requester || item.requester === requester) &&
+          item.scope !== "ONCE" &&
+          (item.scope === "PERSISTENT" || item.missionId === missionId),
+      ),
+    );
   }
 }

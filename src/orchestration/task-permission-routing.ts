@@ -1,6 +1,11 @@
 import type { Agent, AgentPermission } from "@/types/domain";
 import type { PlannedTask } from "./providers/types";
-import { TOOL_MAP } from "./tools/catalog";
+import {
+  TOOL_MAP,
+  canonicalToolId,
+  expandEnabledToolIds,
+  isKnownTool,
+} from "./tools/catalog";
 
 type ToolDefinitionLike = { requiredPermissions: readonly string[] };
 type ToolCatalogLike = Record<string, ToolDefinitionLike | undefined>;
@@ -21,7 +26,7 @@ export function requiredPermissionsForTools(
   const toolCatalog = catalogOrDefault(catalog);
   return [
     ...new Set(
-      tools.flatMap((toolId) => toolCatalog[toolId]?.requiredPermissions ?? []),
+      tools.flatMap((toolId) => toolCatalog[canonicalToolId(toolId)]?.requiredPermissions ?? []),
     ),
   ];
 }
@@ -46,18 +51,24 @@ export function enabledToolsForAgent(
   const rows = toolSettings.filter((tool) => tool.agent_id === agent.id);
 
   if (rows.length) {
-    return new Set(rows.filter((tool) => tool.enabled).map((tool) => tool.tool_id));
+    return expandEnabledToolIds(
+      rows.filter((tool) => tool.enabled).map((tool) => canonicalToolId(tool.tool_id)),
+    );
   }
 
-  // Backward compatibility for legacy agents created before agent_tools existed.
+  // Migration compatibility: local legacy rows can still contain agents.allowed_tools.
+  // Unlike the previous behavior, an empty capability list no longer grants every tool.
+  const legacyAllowed = Array.isArray((agent as unknown as { allowed_tools?: unknown }).allowed_tools)
+    ? ((agent as unknown as { allowed_tools: unknown[] }).allowed_tools.filter(
+        (item): item is string => typeof item === "string",
+      ))
+    : [];
   const capabilities = agent.capabilities ?? [];
-  if (capabilities.length === 0) return new Set(Object.keys(toolCatalog));
+  const base = legacyAllowed.length > 0 ? legacyAllowed : capabilities.filter(isKnownTool);
 
-  return new Set([
-    ...capabilities,
-    "web_search",
-    "repository_read",
-  ]);
+  return expandEnabledToolIds(
+    base.map(canonicalToolId).filter((toolId) => Boolean(toolCatalog[toolId])),
+  );
 }
 
 export function missingPermissionsForTask(
@@ -81,9 +92,10 @@ export function missingToolsForTask(
   const toolCatalog = catalogOrDefault(catalog);
   const enabled = enabledToolsForAgent(agent, toolSettings, toolCatalog);
 
-  return task.tools.filter(
-    (toolId) => !toolCatalog[toolId] || !enabled.has(toolId),
-  );
+  return task.tools.filter((requestedId) => {
+    const toolId = canonicalToolId(requestedId);
+    return !toolCatalog[toolId] || !enabled.has(toolId);
+  });
 }
 
 export function missingTaskAccess(
@@ -110,14 +122,17 @@ export function allowedToolsForTask(
   const granted = grantedPermissionsForAgent(agent.id, permissions);
   const enabled = enabledToolsForAgent(agent, toolSettings, toolCatalog);
 
-  return task.tools.filter((toolId) => {
-    const definition = toolCatalog[toolId];
-    return (
-      Boolean(definition) &&
-      enabled.has(toolId) &&
-      definition!.requiredPermissions.every((permission) => granted.has(permission))
-    );
-  });
+  return task.tools
+    .map(canonicalToolId)
+    .filter((toolId, index, all) => all.indexOf(toolId) === index)
+    .filter((toolId) => {
+      const definition = toolCatalog[toolId];
+      return (
+        Boolean(definition) &&
+        enabled.has(toolId) &&
+        definition!.requiredPermissions.every((permission) => granted.has(permission))
+      );
+    });
 }
 
 export function filterAgentsByTaskPermissions<T extends Pick<Agent, "id">>(

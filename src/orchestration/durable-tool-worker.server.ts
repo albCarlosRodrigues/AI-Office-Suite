@@ -1,6 +1,7 @@
 import path from "node:path";
 import { localDbServer } from "@/local/database.server";
 import { FileArtifactStore } from "@/runtime/artifact-store.server";
+import { OperationalToolAuthorizer } from "@/runtime/access-control/operational-authorizer.server";
 import { DurableLocalToolExecutor } from "@/runtime/durable/local-tool-executor.server";
 import { runtimeDurableStore } from "@/runtime/durable/store.server";
 import { ToolExecutionWorker } from "@/runtime/durable/tool-worker.server";
@@ -51,13 +52,10 @@ export async function reconcileInactiveDurableMissions(store = runtimeDurableSto
   if (error) throw new Error(error.message);
 
   const snapshot = await store.snapshot();
-
   const staleMissionIds = inactiveDurableMissionIds(snapshot.missions, operationalMissions ?? []);
-
   if (staleMissionIds.length === 0) return 0;
 
   const cancellation = new CancellationService(store);
-
   for (const missionId of staleMissionIds) {
     await cancellation.request({
       missionId,
@@ -66,9 +64,9 @@ export async function reconcileInactiveDurableMissions(store = runtimeDurableSto
       requestedBy: "runtime-reconciler",
     });
   }
-
   return staleMissionIds.length;
 }
+
 /** Bounded autonomous worker pass; safe to invoke again after process restart. */
 export async function runDurableToolWorker(limit = 10, signal?: AbortSignal) {
   const store = runtimeDurableStore();
@@ -83,9 +81,12 @@ export async function runDurableToolWorker(limit = 10, signal?: AbortSignal) {
     localDbServer.from("agents").select("id,external_config"),
     localDbServer.from("missions").select("id,mission_contract"),
   ]);
+
+  // PEP immediately before a local side effect. The authorizer reloads current
+  // permissions/agent/mission/approval state for every execution.
+  const authorizer = new OperationalToolAuthorizer(store);
   const executor = new DurableLocalToolExecutor((request, approved) => {
     const agent = agents?.find((candidate) => candidate.id === request.agentId);
-
     const mission = missions?.find((candidate) => candidate.id === request.missionId);
 
     const contract =
@@ -94,13 +95,10 @@ export async function runDurableToolWorker(limit = 10, signal?: AbortSignal) {
       !Array.isArray(mission.mission_contract)
         ? (mission.mission_contract as Record<string, unknown>)
         : {};
-
     const missionWorkspace = contract["workspace"];
-
     const agentWorkspace = (agent?.external_config as Record<string, unknown> | null | undefined)?.[
       "workspace"
     ];
-
     const workspace =
       typeof missionWorkspace === "string" && path.isAbsolute(missionWorkspace)
         ? missionWorkspace
@@ -111,6 +109,7 @@ export async function runDurableToolWorker(limit = 10, signal?: AbortSignal) {
     const allowedRoots = [workspace];
     const registry = new ToolRegistry();
     for (const handler of createLocalToolHandlers(allowedRoots)) registry.register(handler);
+
     return new ToolExecutionGateway(
       registry,
       new DefaultDenyToolPolicy({
@@ -119,7 +118,8 @@ export async function runDurableToolWorker(limit = 10, signal?: AbortSignal) {
       }),
       artifacts,
     );
-  }, artifacts);
+  }, artifacts, authorizer);
+
   const worker = new ToolExecutionWorker(`tool-worker:${process.pid}`, store, executor);
   let processed = 0;
   while (processed < Math.max(1, Math.min(limit, 100)) && !signal?.aborted) {

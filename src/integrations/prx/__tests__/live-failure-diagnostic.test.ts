@@ -15,17 +15,24 @@ import {
 describe(
   "live PRX failure diagnostic",
   () => {
+    const failureCasePath =
+      process.env[
+        "PRX_FAILURE_CASE"
+      ];
+
+    if (!failureCasePath) {
+      it.skip(
+        "diagnoses the exact rendered response",
+        () => {}
+      );
+      return;
+    }
+
     it(
       "diagnoses the exact rendered response",
       () => {
         const path =
-          process.env[
-            "PRX_FAILURE_CASE"
-          ];
-
-        expect(
-          path
-        ).toBeTruthy();
+          failureCasePath;
 
         const data =
           JSON.parse(
@@ -122,9 +129,9 @@ describe(
         }
 
         /*
-         * Não queremos mascarar a falha.
+         * NÃ£o queremos mascarar a falha.
          * Esse expect deve falhar se o runtime
-         * realmente não consegue interpretar
+         * realmente nÃ£o consegue interpretar
          * a resposta capturada.
          */
         expect(

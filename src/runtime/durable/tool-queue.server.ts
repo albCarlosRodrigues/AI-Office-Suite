@@ -1,4 +1,10 @@
 import { randomUUID } from "node:crypto";
+import { RISK_ORDER } from "@/permissions/catalog";
+import {
+  canonicalToolId,
+  getToolDefinition,
+  toolRequiresDurableApproval,
+} from "@/permissions/tool-registry";
 import { redact } from "../security/redaction";
 import { DurableRuntimeStore } from "./store.server";
 import { addOutbox, audit, canonicalHash, iso, metric, plusMs } from "./helpers";
@@ -40,11 +46,23 @@ export class DurableToolQueue {
         )
       )
         throw new Error("CANCELLATION_ALREADY_REQUESTED");
+
+      // Security metadata is normalized here, at the durable boundary.
+      // Unknown/custom test tools remain extensible, but known aliases cannot bypass policy.
+      const canonicalId = canonicalToolId(input.toolId);
+      const definition = getToolDefinition(canonicalId);
+      const riskFloor = definition ? RISK_ORDER[definition.riskLevel] : input.riskLevel;
+      const riskLevel = Math.max(input.riskLevel, riskFloor);
+      const approvalPolicy =
+        toolRequiresDurableApproval(canonicalId) || input.approvalPolicy === "REQUIRE_APPROVAL"
+          ? "REQUIRE_APPROVAL"
+          : "AUTO";
+
       const safeArguments = redact(input.arguments) as Record<string, unknown>;
-      const inputHash = canonicalHash({ toolId: input.toolId, arguments: safeArguments });
+      const inputHash = canonicalHash({ toolId: canonicalId, arguments: safeArguments });
       const idempotencyKey = canonicalHash({
         scope: input.missionId,
-        operationType: input.toolId,
+        operationType: canonicalId,
         inputHash,
         logicalOperationId: input.logicalOperationId,
       });
@@ -57,13 +75,13 @@ export class DurableToolQueue {
         commandId: input.commandId,
         agentRunId: input.agentRunId,
         agentId: input.agentId,
-        toolId: input.toolId,
+        toolId: canonicalId,
         arguments: safeArguments,
         inputHash,
-        riskLevel: input.riskLevel,
-        approvalPolicy: input.approvalPolicy,
+        riskLevel,
+        approvalPolicy,
         policyVersion: input.policyVersion,
-        status: input.approvalPolicy === "AUTO" ? "READY" : "WAITING_APPROVAL",
+        status: approvalPolicy === "AUTO" ? "READY" : "WAITING_APPROVAL",
         attempt: 0,
         maxAttempts: input.maxAttempts ?? 3,
         createdAt: iso(now),
@@ -89,22 +107,34 @@ export class DurableToolQueue {
       if (!state.idempotencyRecords.some((item) => item.idempotencyKey === idempotencyKey))
         state.idempotencyRecords.push({
           idempotencyKey,
-          operationType: input.toolId,
+          operationType: canonicalId,
           status: "RESERVED",
           resultRef: null,
           createdAt: iso(now),
           completedAt: null,
         });
-      if (task) task.status = input.approvalPolicy === "AUTO" ? "WAITING_TOOL" : "WAITING_APPROVAL";
+      if (task) task.status = approvalPolicy === "AUTO" ? "WAITING_TOOL" : "WAITING_APPROVAL";
       addOutbox(
         state,
-        input.approvalPolicy === "AUTO" ? "TOOL_READY" : "TOOL_APPROVAL_REQUIRED",
+        approvalPolicy === "AUTO" ? "TOOL_READY" : "TOOL_APPROVAL_REQUIRED",
         "tool_request",
         request.toolCallId,
-        {},
+        { requestedToolId: input.toolId, canonicalToolId: canonicalId },
         now,
       );
-      audit(state, "TOOL_REQUESTED", request, { inputHash }, now);
+      audit(
+        state,
+        "TOOL_REQUESTED",
+        request,
+        {
+          inputHash,
+          requestedToolId: input.toolId,
+          canonicalToolId: canonicalId,
+          riskLevel,
+          approvalPolicy,
+        },
+        now,
+      );
       return structuredClone(request);
     });
   }
