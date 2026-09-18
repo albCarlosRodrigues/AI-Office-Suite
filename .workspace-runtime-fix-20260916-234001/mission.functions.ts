@@ -39,9 +39,7 @@ const PENDING_RUNTIME_TOOL_STATUSES = new Set([
   "RUNNING",
 ]);
 
-function durableRiskToOperational(
-  riskLevel: number,
-): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
+function durableRiskToOperational(riskLevel: number): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
   if (riskLevel >= 4) return "CRITICAL";
   if (riskLevel >= 3) return "HIGH";
   if (riskLevel >= 2) return "MEDIUM";
@@ -57,119 +55,80 @@ function durableRiskToOperational(
  * This projection is not a second authorization decision. The durable store
  * remains authoritative.
  */
-async function syncDurableApprovalsToOperationalDb(
-  missionId: string,
-) {
+async function syncDurableApprovalsToOperationalDb(missionId: string) {
   const store = runtimeDurableStore();
   const snapshot = await store.snapshot();
 
-  const approvals = snapshot.approvals.filter(
-    (approval) => approval.missionId === missionId,
-  );
+  const approvals = snapshot.approvals.filter((approval) => approval.missionId === missionId);
 
   if (approvals.length === 0) return 0;
 
-  const { data: mission, error: missionError } =
-    await localDbServer
-      .from("missions")
-      .select("id,organization_id")
-      .eq("id", missionId)
-      .single();
+  const { data: mission, error: missionError } = await localDbServer
+    .from("missions")
+    .select("id,organization_id")
+    .eq("id", missionId)
+    .single();
 
   if (missionError || !mission) {
     throw new Error(
-      missionError?.message ??
-        `Mission ${missionId} not found while syncing durable approvals`,
+      missionError?.message ?? `Mission ${missionId} not found while syncing durable approvals`,
     );
   }
 
   let synced = 0;
 
   for (const approval of approvals) {
-    const request = snapshot.toolRequests.find(
-      (item) =>
-        item.toolCallId === approval.toolCallId,
-    );
+    const request = snapshot.toolRequests.find((item) => item.toolCallId === approval.toolCallId);
 
-    const operationalStatus =
-      approval.status === "CANCELLED"
-        ? "EXPIRED"
-        : approval.status;
+    const operationalStatus = approval.status === "CANCELLED" ? "EXPIRED" : approval.status;
 
-    const { error } = await localDbServer
-      .from("approval_requests")
-      .upsert({
-        id: approval.approvalId,
+    const { error } = await localDbServer.from("approval_requests").upsert({
+      id: approval.approvalId,
 
-        organization_id:
-          mission.organization_id,
+      organization_id: mission.organization_id,
 
-        mission_id:
-          approval.missionId,
+      mission_id: approval.missionId,
 
-        task_id:
-          approval.taskId,
+      task_id: approval.taskId,
 
-        agent_id:
-          approval.requester,
+      agent_id: approval.requester,
 
-        kind:
-          "TOOL_EXECUTION",
+      kind: "TOOL_EXECUTION",
 
-        action:
-          `Executar ferramenta ${approval.toolId}`,
+      action: `Executar ferramenta ${approval.toolId}`,
 
-        reason:
-          approval.reason,
+      reason: approval.reason,
 
-        required_permissions: [],
+      required_permissions: [],
 
-        requested_action: {
-          durable: true,
-          toolCallId:
-            approval.toolCallId,
-          toolId:
-            approval.toolId,
-          arguments:
-            request?.arguments ?? {},
-          inputHash:
-            approval.inputHash,
-          policyVersion:
-            approval.policyVersion,
-        },
+      requested_action: {
+        durable: true,
+        toolCallId: approval.toolCallId,
+        toolId: approval.toolId,
+        arguments: request?.arguments ?? {},
+        inputHash: approval.inputHash,
+        policyVersion: approval.policyVersion,
+      },
 
-        risk_level:
-          durableRiskToOperational(
-            approval.riskLevel,
-          ),
+      risk_level: durableRiskToOperational(approval.riskLevel),
 
-        status:
-          operationalStatus,
+      status: operationalStatus,
 
-        approval_scope:
-          approval.scope,
+      approval_scope: approval.scope,
 
-        always_allow:
-          approval.status === "APPROVED" &&
-          approval.scope === "PERSISTENT",
+      always_allow: approval.status === "APPROVED" && approval.scope === "PERSISTENT",
 
-        tool_id:
-          approval.toolId,
+      tool_id: approval.toolId,
 
-        resolved_at:
-          approval.decisionAt,
+      resolved_at: approval.decisionAt,
 
-        resolved_by:
-          approval.decisionBy,
+      resolved_by: approval.decisionBy,
 
-        resolution_note:
-          approval.decision,
-      } as never);
+      resolution_note: approval.decision,
+    } as never);
 
     if (error) {
-      throw new Error(
-        `Failed to sync durable approval ${approval.approvalId}: ${error.message}`,
-      );
+      throw new Error(`Failed to sync durable approval ${approval.approvalId}: ${error.message}`);
     }
 
     synced += 1;
@@ -188,9 +147,7 @@ export const stepMission = createServerFn({ method: "POST" })
 
     // Project durable approvals into the operational database so the human
     // approval UI always sees the same approval id used by the runtime.
-    await syncDurableApprovalsToOperationalDb(
-      data.missionId,
-    );
+    await syncDurableApprovalsToOperationalDb(data.missionId);
 
     // A mission waiting for deterministic tool execution must not consume a
     // mission step. The next pacemaker tick will continue pumping the queue.
@@ -312,9 +269,7 @@ export const resolveApproval = createServerFn({ method: "POST" })
         await runDurableToolWorker(20);
       }
 
-      await syncDurableApprovalsToOperationalDb(
-        approval.missionId,
-      );
+      await syncDurableApprovalsToOperationalDb(approval.missionId);
 
       return {
         ok: true,

@@ -1,13 +1,13 @@
 import { localDbServer } from "@/local/database.server";
-import {
-  canonicalToolId,
-  expandEnabledToolIds,
-  isKnownTool,
-} from "@/permissions/tool-registry";
+import { canonicalToolId, expandEnabledToolIds, isKnownTool } from "@/permissions/tool-registry";
 import { DurableRuntimeStore } from "../durable/store.server";
 import { audit, canonicalHash } from "../durable/helpers";
 import type { DurableApproval, DurableToolRequest } from "../durable/types";
-import type { AuthorizationDecision, AuthorizationSnapshot, DurableExecutionAuthorizer } from "./types";
+import type {
+  AuthorizationDecision,
+  AuthorizationSnapshot,
+  DurableExecutionAuthorizer,
+} from "./types";
 import { LocalNextGenPdp } from "./pdp";
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -16,7 +16,9 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     : {};
 
 function stringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function chooseApproval(
@@ -102,18 +104,22 @@ export class OperationalToolAuthorizer implements DurableExecutionAuthorizer {
 
     const contract = asRecord(mission?.["mission_contract"]);
     const authorization = asRecord(contract["authorization"]);
-    const permissionMode =
-      authorization["permission_mode"] === "restrict" ? "restrict" : "augment";
+    const permissionMode = authorization["permission_mode"] === "restrict" ? "restrict" : "augment";
     const workspace = typeof contract["workspace"] === "string" ? contract["workspace"] : null;
 
     const durable = await this.store.snapshot();
     const approval = chooseApproval(durable.approvals, request);
-    const computedInputHash = canonicalHash({ toolId: request.toolId, arguments: request.arguments });
+    const computedInputHash = canonicalHash({
+      toolId: request.toolId,
+      arguments: request.arguments,
+    });
 
     const snapshot: AuthorizationSnapshot = {
       killSwitch:
         durable.killSwitch ||
-        Boolean((organizationResult.data as Record<string, unknown> | null)?.["kill_switch_active"]),
+        Boolean(
+          (organizationResult.data as Record<string, unknown> | null)?.["kill_switch_active"],
+        ),
       agent: agent
         ? {
             id: String(agent["id"]),

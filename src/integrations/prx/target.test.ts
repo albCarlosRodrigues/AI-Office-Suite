@@ -5,38 +5,24 @@ const desktop = {
   id: "desktop-current",
   type: "page",
   url: "app://-/index.html",
-  webSocketDebuggerUrl:
-    "ws://127.0.0.1:9223/devtools/page/desktop-current",
+  webSocketDebuggerUrl: "ws://127.0.0.1:9223/devtools/page/desktop-current",
 };
 
 it("rediscovers the ChatGPT Desktop shell when its target id changes", () => {
-  expect(
-    selectPrxTarget(
-      [desktop],
-      "old-target-id",
-    )?.id,
-  ).toBe("desktop-current");
+  expect(selectPrxTarget([desktop], "old-target-id")?.id).toBe("desktop-current");
 });
 
 it("prefers the operational Desktop shell over hidden chatgpt webviews", () => {
   const hiddenConversation = {
     id: "hidden-conversation",
     type: "webview",
-    url:
-      "https://chatgpt.com/g/test/c/test",
-    webSocketDebuggerUrl:
-      "ws://127.0.0.1:9223/devtools/page/hidden-conversation",
+    url: "https://chatgpt.com/g/test/c/test",
+    webSocketDebuggerUrl: "ws://127.0.0.1:9223/devtools/page/hidden-conversation",
   };
 
-  expect(
-    selectPrxTarget(
-      [
-        hiddenConversation,
-        desktop,
-      ],
-      "hidden-conversation",
-    )?.id,
-  ).toBe("desktop-current");
+  expect(selectPrxTarget([hiddenConversation, desktop], "hidden-conversation")?.id).toBe(
+    "desktop-current",
+  );
 });
 
 it("fails closed when multiple Desktop shells are present", () => {
@@ -51,16 +37,13 @@ it("fails closed when multiple Desktop shells are present", () => {
       ],
       "",
     ),
-  ).toThrow(
-    "PRX_AMBIGUOUS_DESKTOP_TARGET",
-  );
+  ).toThrow("PRX_AMBIGUOUS_DESKTOP_TARGET");
 });
 it("parses the rendered PRX reply and rejects the outbound template", () => {
   const expected = {
     requestId: "req-123",
     sessionId: "prx-geral-confirmacao",
-    conversationId:
-      "https://chatgpt.com/g/project/c/chat",
+    conversationId: "https://chatgpt.com/g/project/c/chat",
     agentId: "health",
   };
 
@@ -70,30 +53,19 @@ it("parses the rendered PRX reply and rejects the outbound template", () => {
     text: "YOUR RESPONSE HERE",
   });
 
-  expect(
-    parsePrxReplyCandidate(
-      outbound,
-      expected,
-    ),
-  ).toBeNull();
+  expect(parsePrxReplyCandidate(outbound, expected)).toBeNull();
 
   const rendered =
-    'Resposta: ' +
+    "Resposta: " +
     JSON.stringify({
       ...expected,
       messageId: "req-123",
       text: "OK",
     });
 
-  expect(
-    parsePrxReplyCandidate(
-      rendered,
-      expected,
-    ),
-  ).toMatchObject({
+  expect(parsePrxReplyCandidate(rendered, expected)).toMatchObject({
     requestId: "req-123",
-    sessionId:
-      "prx-geral-confirmacao",
+    sessionId: "prx-geral-confirmacao",
     agentId: "health",
     messageId: "req-123",
     text: "OK",

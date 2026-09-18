@@ -98,32 +98,32 @@ build, diff-check e audit (0 vulnerabilidades) passaram.
 
 ## Missão PRX + LocalAnt + FreeClaude — 1.4.0 candidata
 
-| Requisito | Estado | Evidência / limite |
-| --- | --- | --- |
-| REQ-AGENT-001 Existing Acme Robots agent discovery | PASS | Store desktop consultado; IDs Codex c096348e, GPT 2c10fb31, Claudinho 35fec107 |
-| REQ-AGENT-002 GPT Manager hierarchy | PASS | binding idempotente e teste de IDs preservados |
-| REQ-AGENT-003 PRX backend | PARTIAL | backend/driver implementados; porta 9223 indisponível |
-| REQ-AGENT-004 PRX correlation | PARTIAL | teste de resposta incorreta; driver e persistência de sessão ainda sem E2E |
-| REQ-AGENT-005 PRX cancellation | PASS | testes de timeout, aborto e exclusão de escritores |
-| REQ-AGENT-006 LocalAnt adapter | PARTIAL | alias para handlers existentes; grep/glob/edit dedicado não implementados |
-| REQ-AGENT-007 AI Office policy enforcement over LocalAnt | PASS | testes de deny/approval; solicitações do gerente usam fila durável |
-| REQ-AGENT-008 Claudinho existing agent binding | PASS | IDs preservados e associação idempotente |
-| REQ-AGENT-009 FreeClaude backend | PASS | transporte Messages nativo validado com modelo gratuito real; blocos thinking separados e respostas incompletas rejeitadas; não depende do proxy Python |
-| REQ-AGENT-010 OpenRouter provider | PASS | modelo/timeout/temperatura e teste HTTP falso |
-| REQ-AGENT-011 SecretStore OpenRouter | PASS | chave autorizada salva e relida no DPAPI; probe real CONNECTED; ausência de plaintext verificada; backups do store/vault preservados |
-| REQ-AGENT-012 Configurable model | PASS | formulário existente; sem modelo fixo para o backend |
-| REQ-AGENT-013 Claudinho → GPT escalation | PARTIAL | engine integrado, sem E2E do fluxo completo |
-| REQ-AGENT-014 GPT → Claudinho response | PARTIAL | schema e continuação implementados; sem E2E completo |
-| REQ-AGENT-015 Codex hierarchy | PARTIAL | vínculo preservado; provedor real do líder não configurado |
-| REQ-CHAT-001 Group chat panel | PASS | smoke visual do build em janela ampla: mapa e painel coexistem; participantes visíveis |
-| REQ-CHAT-002 Runtime-backed messages | PASS | eventos reais, sem mensagens fixas |
-| REQ-CHAT-003 Per-mission chat | PARTIAL | filtro disponível; janela de eventos limitada aos 200 recentes |
-| REQ-CHAT-004 Agent message persistence | PARTIAL | usa mission_events existentes; não há novo evento canônico AgentMessage |
-| REQ-CHAT-005 Traceable messages | PARTIAL | link de missão e ID de tarefa; links diretos de run/artifact pendentes |
-| REQ-OFFICE-001 Walking/reporting | PARTIAL | bridge ampliado; QA de missão completa pendente |
-| REQ-OFFICE-002 Path visualization | PARTIAL | pathfinding existente preservado, sem novo smoke visual |
-| REQ-OFFICE-003 Runtime state binding | PARTIAL | eventos reais; enum visual expandido completo pendente |
-| REQ-E2E-001 Three-agent hierarchy E2E | PARTIAL | teste de adaptadores + efeitos reais em fixture; não cobre missão completa do engine/desktop |
+| Requisito                                                | Estado  | Evidência / limite                                                                                                                                      |
+| -------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| REQ-AGENT-001 Existing Acme Robots agent discovery       | PASS    | Store desktop consultado; IDs Codex c096348e, GPT 2c10fb31, Claudinho 35fec107                                                                          |
+| REQ-AGENT-002 GPT Manager hierarchy                      | PASS    | binding idempotente e teste de IDs preservados                                                                                                          |
+| REQ-AGENT-003 PRX backend                                | PARTIAL | backend/driver implementados; porta 9223 indisponível                                                                                                   |
+| REQ-AGENT-004 PRX correlation                            | PARTIAL | teste de resposta incorreta; driver e persistência de sessão ainda sem E2E                                                                              |
+| REQ-AGENT-005 PRX cancellation                           | PASS    | testes de timeout, aborto e exclusão de escritores                                                                                                      |
+| REQ-AGENT-006 LocalAnt adapter                           | PARTIAL | alias para handlers existentes; grep/glob/edit dedicado não implementados                                                                               |
+| REQ-AGENT-007 AI Office policy enforcement over LocalAnt | PASS    | testes de deny/approval; solicitações do gerente usam fila durável                                                                                      |
+| REQ-AGENT-008 Claudinho existing agent binding           | PASS    | IDs preservados e associação idempotente                                                                                                                |
+| REQ-AGENT-009 FreeClaude backend                         | PASS    | transporte Messages nativo validado com modelo gratuito real; blocos thinking separados e respostas incompletas rejeitadas; não depende do proxy Python |
+| REQ-AGENT-010 OpenRouter provider                        | PASS    | modelo/timeout/temperatura e teste HTTP falso                                                                                                           |
+| REQ-AGENT-011 SecretStore OpenRouter                     | PASS    | chave autorizada salva e relida no DPAPI; probe real CONNECTED; ausência de plaintext verificada; backups do store/vault preservados                    |
+| REQ-AGENT-012 Configurable model                         | PASS    | formulário existente; sem modelo fixo para o backend                                                                                                    |
+| REQ-AGENT-013 Claudinho → GPT escalation                 | PARTIAL | engine integrado, sem E2E do fluxo completo                                                                                                             |
+| REQ-AGENT-014 GPT → Claudinho response                   | PARTIAL | schema e continuação implementados; sem E2E completo                                                                                                    |
+| REQ-AGENT-015 Codex hierarchy                            | PARTIAL | vínculo preservado; provedor real do líder não configurado                                                                                              |
+| REQ-CHAT-001 Group chat panel                            | PASS    | smoke visual do build em janela ampla: mapa e painel coexistem; participantes visíveis                                                                  |
+| REQ-CHAT-002 Runtime-backed messages                     | PASS    | eventos reais, sem mensagens fixas                                                                                                                      |
+| REQ-CHAT-003 Per-mission chat                            | PARTIAL | filtro disponível; janela de eventos limitada aos 200 recentes                                                                                          |
+| REQ-CHAT-004 Agent message persistence                   | PARTIAL | usa mission_events existentes; não há novo evento canônico AgentMessage                                                                                 |
+| REQ-CHAT-005 Traceable messages                          | PARTIAL | link de missão e ID de tarefa; links diretos de run/artifact pendentes                                                                                  |
+| REQ-OFFICE-001 Walking/reporting                         | PARTIAL | bridge ampliado; QA de missão completa pendente                                                                                                         |
+| REQ-OFFICE-002 Path visualization                        | PARTIAL | pathfinding existente preservado, sem novo smoke visual                                                                                                 |
+| REQ-OFFICE-003 Runtime state binding                     | PARTIAL | eventos reais; enum visual expandido completo pendente                                                                                                  |
+| REQ-E2E-001 Three-agent hierarchy E2E                    | PARTIAL | teste de adaptadores + efeitos reais em fixture; não cobre missão completa do engine/desktop                                                            |
 
 Não considerar esta missão encerrada enquanto os PARTIAL acima não forem resolvidos.
 O teste real de ChatGPT no navegador confirmou somente a criação do canal PRX - Geral.

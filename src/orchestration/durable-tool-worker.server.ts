@@ -85,40 +85,44 @@ export async function runDurableToolWorker(limit = 10, signal?: AbortSignal) {
   // PEP immediately before a local side effect. The authorizer reloads current
   // permissions/agent/mission/approval state for every execution.
   const authorizer = new OperationalToolAuthorizer(store);
-  const executor = new DurableLocalToolExecutor((request, approved) => {
-    const agent = agents?.find((candidate) => candidate.id === request.agentId);
-    const mission = missions?.find((candidate) => candidate.id === request.missionId);
+  const executor = new DurableLocalToolExecutor(
+    (request, approved) => {
+      const agent = agents?.find((candidate) => candidate.id === request.agentId);
+      const mission = missions?.find((candidate) => candidate.id === request.missionId);
 
-    const contract =
-      mission?.mission_contract &&
-      typeof mission.mission_contract === "object" &&
-      !Array.isArray(mission.mission_contract)
-        ? (mission.mission_contract as Record<string, unknown>)
-        : {};
-    const missionWorkspace = contract["workspace"];
-    const agentWorkspace = (agent?.external_config as Record<string, unknown> | null | undefined)?.[
-      "workspace"
-    ];
-    const workspace =
-      typeof missionWorkspace === "string" && path.isAbsolute(missionWorkspace)
-        ? missionWorkspace
-        : typeof agentWorkspace === "string" && path.isAbsolute(agentWorkspace)
-          ? agentWorkspace
-          : process.cwd();
+      const contract =
+        mission?.mission_contract &&
+        typeof mission.mission_contract === "object" &&
+        !Array.isArray(mission.mission_contract)
+          ? (mission.mission_contract as Record<string, unknown>)
+          : {};
+      const missionWorkspace = contract["workspace"];
+      const agentWorkspace = (
+        agent?.external_config as Record<string, unknown> | null | undefined
+      )?.["workspace"];
+      const workspace =
+        typeof missionWorkspace === "string" && path.isAbsolute(missionWorkspace)
+          ? missionWorkspace
+          : typeof agentWorkspace === "string" && path.isAbsolute(agentWorkspace)
+            ? agentWorkspace
+            : process.cwd();
 
-    const allowedRoots = [workspace];
-    const registry = new ToolRegistry();
-    for (const handler of createLocalToolHandlers(allowedRoots)) registry.register(handler);
+      const allowedRoots = [workspace];
+      const registry = new ToolRegistry();
+      for (const handler of createLocalToolHandlers(allowedRoots)) registry.register(handler);
 
-    return new ToolExecutionGateway(
-      registry,
-      new DefaultDenyToolPolicy({
-        allowedTools: [request.toolId],
-        approvedToolCallIds: approved ? new Set([request.toolCallId]) : new Set(),
-      }),
-      artifacts,
-    );
-  }, artifacts, authorizer);
+      return new ToolExecutionGateway(
+        registry,
+        new DefaultDenyToolPolicy({
+          allowedTools: [request.toolId],
+          approvedToolCallIds: approved ? new Set([request.toolCallId]) : new Set(),
+        }),
+        artifacts,
+      );
+    },
+    artifacts,
+    authorizer,
+  );
 
   const worker = new ToolExecutionWorker(`tool-worker:${process.pid}`, store, executor);
   let processed = 0;

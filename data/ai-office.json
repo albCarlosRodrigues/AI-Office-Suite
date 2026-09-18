@@ -41,10 +41,7 @@
             "enforced": true
           }
         ],
-        "require_approval_for": [
-          "deploy.production",
-          "email.send"
-        ],
+        "require_approval_for": ["deploy.production", "email.send"],
         "organization_id": "fdad4349-28eb-49bb-9310-3d0eb7cad758"
       }
     ],
@@ -573,15 +570,8 @@
         "require_approval": false,
         "is_primary_controller": true,
         "is_suspended": false,
-        "capabilities": [
-          "delegate_tasks",
-          "approve_tasks",
-          "manage_agents",
-          "final_review"
-        ],
-        "allowed_tools": [
-          "repository_read"
-        ],
+        "capabilities": ["delegate_tasks", "approve_tasks", "manage_agents", "final_review"],
+        "allowed_tools": ["repository_read"],
         "external_config": {
           "mode": "orchestrator",
           "role": "leader"
@@ -616,16 +606,8 @@
         "require_approval": false,
         "is_primary_controller": false,
         "is_suspended": false,
-        "capabilities": [
-          "delegate_tasks",
-          "approve_tasks",
-          "code_analysis",
-          "review"
-        ],
-        "allowed_tools": [
-          "repository_read",
-          "testing"
-        ],
+        "capabilities": ["delegate_tasks", "approve_tasks", "code_analysis", "review"],
+        "allowed_tools": ["repository_read", "testing"],
         "external_config": {
           "mode": "chatgpt-session",
           "protocol": "mcp-style",
@@ -661,18 +643,8 @@
         "require_approval": false,
         "is_primary_controller": false,
         "is_suspended": false,
-        "capabilities": [
-          "repository_read",
-          "repository_write",
-          "shell",
-          "testing"
-        ],
-        "allowed_tools": [
-          "repository_read",
-          "repository_write",
-          "shell",
-          "testing"
-        ],
+        "capabilities": ["repository_read", "repository_write", "shell", "testing"],
+        "allowed_tools": ["repository_read", "repository_write", "shell", "testing"],
         "external_config": {
           "mode": "free-claude",
           "protocol": "command",
@@ -1153,9 +1125,7 @@
         "stop_requested": false,
         "is_simulated": true,
         "execution_mode": "SIMULATION",
-        "allowed_agent_ids": [
-          "fd8704d1-96dd-48a9-ad1b-722294bdf8be"
-        ],
+        "allowed_agent_ids": ["fd8704d1-96dd-48a9-ad1b-722294bdf8be"],
         "approval_policy": "policy",
         "summary": null,
         "final_report": null,

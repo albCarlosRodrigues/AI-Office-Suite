@@ -86,7 +86,11 @@ function MissionsPage() {
   };
 
   const deleteMissionPermanently = async (missionId: string) => {
-    if (!window.confirm("Excluir permanentemente esta missão e seus registros? Esta ação não pode ser desfeita."))
+    if (
+      !window.confirm(
+        "Excluir permanentemente esta missão e seus registros? Esta ação não pode ser desfeita.",
+      )
+    )
       return;
 
     setBusyMissionId(missionId);
@@ -103,7 +107,10 @@ function MissionsPage() {
       const meetingIds = (meetings ?? []).map((row) => row.id);
 
       if (commandIds.length) {
-        const { error } = await supabase.from("command_results").delete().in("command_id", commandIds);
+        const { error } = await supabase
+          .from("command_results")
+          .delete()
+          .in("command_id", commandIds);
         if (error) throw error;
       }
 

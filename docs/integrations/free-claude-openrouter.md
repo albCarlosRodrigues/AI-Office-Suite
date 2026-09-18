@@ -31,6 +31,7 @@ Teste opcional `npm run test:openrouter`: configure AI_OFFICE_OPENROUTER_PROVIDE
 e AI_OFFICE_DATA_FILE. A chave é lida exclusivamente do SecretStore. Sem opt-in o
 teste é SKIPPED. O teste automático de integração usa HTTP falso e efeitos reais
 num fixture temporário; não comprova conectividade real com OpenRouter.
+
 # Conexão local verificada em 14/09/2026
 
 O Claudinho existente da Acme Robots está associado ao provider

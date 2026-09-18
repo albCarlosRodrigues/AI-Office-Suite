@@ -108,18 +108,20 @@ export class DurableApprovalService {
     now = Date.now(),
   ) {
     const canonicalId = canonicalToolId(toolId);
-    return this.store.snapshot().then((state) =>
-      state.approvals.find(
-        (item) =>
-          item.status === "APPROVED" &&
-          new Date(item.expiresAt).getTime() > now &&
-          canonicalToolId(item.toolId) === canonicalId &&
-          item.inputHash === inputHash &&
-          item.policyVersion === policyVersion &&
-          (!requester || !item.requester || item.requester === requester) &&
-          item.scope !== "ONCE" &&
-          (item.scope === "PERSISTENT" || item.missionId === missionId),
-      ),
-    );
+    return this.store
+      .snapshot()
+      .then((state) =>
+        state.approvals.find(
+          (item) =>
+            item.status === "APPROVED" &&
+            new Date(item.expiresAt).getTime() > now &&
+            canonicalToolId(item.toolId) === canonicalId &&
+            item.inputHash === inputHash &&
+            item.policyVersion === policyVersion &&
+            (!requester || !item.requester || item.requester === requester) &&
+            item.scope !== "ONCE" &&
+            (item.scope === "PERSISTENT" || item.missionId === missionId),
+        ),
+      );
   }
 }

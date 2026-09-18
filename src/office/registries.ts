@@ -227,44 +227,30 @@ export interface CharacterSpriteDef {
   frameHeight: number;
 }
 
-const character = (
-  id: string,
-  name: string,
-  folder: string,
-): CharacterSpriteDef => {
-  const base =
-    `/assets/ai-office-animations/characters/${folder}`;
+const character = (id: string, name: string, folder: string): CharacterSpriteDef => {
+  const base = `/assets/ai-office-animations/characters/${folder}`;
 
   return {
     id,
     name,
 
-    idleUrl:
-      `${base}/idle.png`,
+    idleUrl: `${base}/idle.png`,
 
-    idleAnimUrl:
-      `${base}/idle-anim.png`,
+    idleAnimUrl: `${base}/idle-anim.png`,
 
-    runUrl:
-      `${base}/run.png`,
+    runUrl: `${base}/run.png`,
 
-    workUrl:
-      `${base}/work.png`,
+    workUrl: `${base}/work.png`,
 
-    thinkUrl:
-      `${base}/think.png`,
+    thinkUrl: `${base}/think.png`,
 
-    sitUrl:
-      `${base}/sit.png`,
+    sitUrl: `${base}/sit.png`,
 
-    waterUrl:
-      `${base}/water.png`,
+    waterUrl: `${base}/water.png`,
 
-    coffeeUrl:
-      `${base}/coffee.png`,
+    coffeeUrl: `${base}/coffee.png`,
 
-    talkUrl:
-      `${base}/talk.png`,
+    talkUrl: `${base}/talk.png`,
 
     frameWidth: 16,
     frameHeight: 32,
@@ -272,29 +258,13 @@ const character = (
 };
 
 export const MODERN_CHARACTERS = [
-  character(
-    "modern-adam",
-    "Adam",
-    "adam",
-  ),
+  character("modern-adam", "Adam", "adam"),
 
-  character(
-    "modern-alex",
-    "Alex",
-    "alex",
-  ),
+  character("modern-alex", "Alex", "alex"),
 
-  character(
-    "modern-amelia",
-    "Amelia",
-    "amelia",
-  ),
+  character("modern-amelia", "Amelia", "amelia"),
 
-  character(
-    "modern-bob",
-    "Bob",
-    "bob",
-  ),
+  character("modern-bob", "Bob", "bob"),
 ] as const;
 
 export function resolveCharacterSprite(id: string | null | undefined): CharacterSpriteDef {

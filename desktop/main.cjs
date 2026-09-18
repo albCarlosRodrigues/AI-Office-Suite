@@ -33,19 +33,13 @@ function scheduleLocalServerRestart(reason) {
 
   const now = Date.now();
 
-  if (
-    now - serverRestartWindowStartedAt >
-    60_000
-  ) {
+  if (now - serverRestartWindowStartedAt > 60_000) {
     serverRestartWindowStartedAt = now;
     serverRestartCount = 0;
   }
 
   if (serverRestartCount >= 5) {
-    console.error(
-      "[desktop] local server restart limit reached:",
-      reason,
-    );
+    console.error("[desktop] local server restart limit reached:", reason);
 
     dialog.showErrorBox(
       "Servidor local indisponível",
@@ -61,40 +55,30 @@ function scheduleLocalServerRestart(reason) {
     `[desktop] local server stopped (${reason}). Restart ${serverRestartCount}/5 in 1s.`,
   );
 
-  serverRestartTimer = setTimeout(
-    async () => {
-      serverRestartTimer = null;
+  serverRestartTimer = setTimeout(async () => {
+    serverRestartTimer = null;
 
-      if (shuttingDown) return;
+    if (shuttingDown) return;
 
-      startLocalServer();
+    startLocalServer();
 
-      try {
-        await waitForServer(100);
+    try {
+      await waitForServer(100);
 
-        console.log(
-          "[desktop] local server recovered on http://127.0.0.1:4173",
-        );
-      } catch (error) {
-        console.error(
-          "[desktop] local server restart failed:",
-          error,
-        );
+      console.log("[desktop] local server recovered on http://127.0.0.1:4173");
+    } catch (error) {
+      console.error("[desktop] local server restart failed:", error);
 
-        const child = localServer;
-        localServer = undefined;
+      const child = localServer;
+      localServer = undefined;
 
-        if (child && !child.killed) {
-          child.kill();
-        }
-
-        scheduleLocalServerRestart(
-          "health check failed after restart",
-        );
+      if (child && !child.killed) {
+        child.kill();
       }
-    },
-    1_000,
-  );
+
+      scheduleLocalServerRestart("health check failed after restart");
+    }
+  }, 1_000);
 }
 
 function startLocalServer() {
@@ -109,60 +93,28 @@ function startLocalServer() {
     PORT: String(PORT),
     NITRO_HOST: HOST,
     NITRO_PORT: String(PORT),
-    AI_OFFICE_DATA_FILE: path.join(
-      app.getPath("userData"),
-      "ai-office.json",
-    ),
+    AI_OFFICE_DATA_FILE: path.join(app.getPath("userData"), "ai-office.json"),
   };
 
   const entry = app.isPackaged
-    ? path.join(
-        process.resourcesPath,
-        "app-server",
-        "server",
-        "index.mjs",
-      )
-    : path.join(
-        app.getAppPath(),
-        "node_modules",
-        "vite",
-        "bin",
-        "vite.js",
-      );
+    ? path.join(process.resourcesPath, "app-server", "server", "index.mjs")
+    : path.join(app.getAppPath(), "node_modules", "vite", "bin", "vite.js");
 
   const args = app.isPackaged
     ? [entry]
-    : [
-        entry,
-        "--host",
-        HOST,
-        "--port",
-        String(PORT),
-        "--strictPort",
-      ];
+    : [entry, "--host", HOST, "--port", String(PORT), "--strictPort"];
 
-  const child = spawn(
-    process.execPath,
-    args,
-    {
-      cwd: app.isPackaged
-        ? path.join(
-            process.resourcesPath,
-            "app-server",
-          )
-        : app.getAppPath(),
+  const child = spawn(process.execPath, args, {
+    cwd: app.isPackaged ? path.join(process.resourcesPath, "app-server") : app.getAppPath(),
 
-      env: environment,
+    env: environment,
 
-      // Never allow the internal server to depend on
-      // the lifetime of stdin/PowerShell.
-      stdio: app.isPackaged
-        ? ["ignore", "ignore", "ignore"]
-        : ["ignore", "inherit", "inherit"],
+    // Never allow the internal server to depend on
+    // the lifetime of stdin/PowerShell.
+    stdio: app.isPackaged ? ["ignore", "ignore", "ignore"] : ["ignore", "inherit", "inherit"],
 
-      windowsHide: true,
-    },
-  );
+    windowsHide: true,
+  });
 
   localServer = child;
 
@@ -172,9 +124,7 @@ function startLocalServer() {
     }
 
     if (!shuttingDown) {
-      scheduleLocalServerRestart(
-        `spawn error: ${error.message}`,
-      );
+      scheduleLocalServerRestart(`spawn error: ${error.message}`);
     }
   });
 
@@ -184,9 +134,7 @@ function startLocalServer() {
     }
 
     if (!shuttingDown) {
-      scheduleLocalServerRestart(
-        `exit code=${String(code)} signal=${String(signal)}`,
-      );
+      scheduleLocalServerRestart(`exit code=${String(code)} signal=${String(signal)}`);
     }
   });
 

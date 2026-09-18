@@ -1,25 +1,9 @@
-export type AgentBusinessState =
-  | "idle"
-  | "thinking"
-  | "working"
-  | "completed"
-  | string;
+export type AgentBusinessState = "idle" | "thinking" | "working" | "completed" | string;
 
-export type Direction =
-  | "up"
-  | "down"
-  | "left"
-  | "right";
+export type Direction = "up" | "down" | "left" | "right";
 
 export type VisualActivity =
-  | "desk"
-  | "walking"
-  | "whiteboard"
-  | "water"
-  | "coffee"
-  | "sofa"
-  | "armchair"
-  | "reporting";
+  "desk" | "walking" | "whiteboard" | "water" | "coffee" | "sofa" | "armchair" | "reporting";
 
 export interface Point {
   x: number;
@@ -59,10 +43,4 @@ export interface AgentAnimationState {
   reportingRequired: boolean;
 }
 
-export type OfficeResource =
-  | "whiteboard"
-  | "water"
-  | "coffee"
-  | "sofa"
-  | "armchair"
-  | "supervisor";
+export type OfficeResource = "whiteboard" | "water" | "coffee" | "sofa" | "armchair" | "supervisor";

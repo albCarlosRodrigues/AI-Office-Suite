@@ -53,10 +53,7 @@
             "enforced": true
           }
         ],
-        "require_approval_for": [
-          "deploy.production",
-          "email.send"
-        ],
+        "require_approval_for": ["deploy.production", "email.send"],
         "organization_id": "7031ed30-ce2e-454b-a561-f339129f2982"
       },
       {
@@ -84,10 +81,7 @@
             "enforced": true
           }
         ],
-        "require_approval_for": [
-          "deploy.production",
-          "email.send"
-        ],
+        "require_approval_for": ["deploy.production", "email.send"],
         "organization_id": "6bc7dce9-7850-4d9b-9c16-671a06c7b1d2"
       }
     ],
@@ -878,11 +872,7 @@
         "require_approval": false,
         "is_primary_controller": false,
         "is_suspended": false,
-        "capabilities": [
-          "delegate_tasks",
-          "approve_tasks",
-          "manage_agents"
-        ],
+        "capabilities": ["delegate_tasks", "approve_tasks", "manage_agents"],
         "allowed_tools": [],
         "external_config": {},
         "max_concurrent_tasks": 1,
@@ -911,11 +901,7 @@
         "require_approval": false,
         "is_primary_controller": true,
         "is_suspended": false,
-        "capabilities": [
-          "delegate_tasks",
-          "approve_tasks",
-          "code_analysis"
-        ],
+        "capabilities": ["delegate_tasks", "approve_tasks", "code_analysis"],
         "allowed_tools": [],
         "external_config": {},
         "max_concurrent_tasks": 1,
@@ -944,11 +930,7 @@
         "require_approval": false,
         "is_primary_controller": false,
         "is_suspended": false,
-        "capabilities": [
-          "delegate_tasks",
-          "code_analysis",
-          "repository_read"
-        ],
+        "capabilities": ["delegate_tasks", "code_analysis", "repository_read"],
         "allowed_tools": [],
         "external_config": {},
         "max_concurrent_tasks": 1,
@@ -977,12 +959,7 @@
         "require_approval": false,
         "is_primary_controller": false,
         "is_suspended": false,
-        "capabilities": [
-          "repository_read",
-          "repository_write",
-          "shell",
-          "testing"
-        ],
+        "capabilities": ["repository_read", "repository_write", "shell", "testing"],
         "allowed_tools": [],
         "external_config": {},
         "max_concurrent_tasks": 1,
@@ -1011,10 +988,7 @@
         "require_approval": false,
         "is_primary_controller": false,
         "is_suspended": false,
-        "capabilities": [
-          "testing",
-          "repository_read"
-        ],
+        "capabilities": ["testing", "repository_read"],
         "allowed_tools": [],
         "external_config": {},
         "max_concurrent_tasks": 1,
@@ -1043,10 +1017,7 @@
         "require_approval": false,
         "is_primary_controller": false,
         "is_suspended": false,
-        "capabilities": [
-          "browse_web",
-          "code_analysis"
-        ],
+        "capabilities": ["browse_web", "code_analysis"],
         "allowed_tools": [],
         "external_config": {},
         "max_concurrent_tasks": 1,

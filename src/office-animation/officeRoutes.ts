@@ -203,10 +203,7 @@ export function routeToSofa(from: Point): Point[] {
   ];
 }
 
-export function routeBack(
-  current: Point,
-  home: Point,
-): Point[] {
+export function routeBack(current: Point, home: Point): Point[] {
   return [
     current,
 

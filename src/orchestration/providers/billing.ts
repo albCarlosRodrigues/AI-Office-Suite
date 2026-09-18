@@ -5,7 +5,9 @@ export type ProviderBillingMode = "FREE" | "PLAN_QUOTA" | "METERED";
 type BillingProvider = Pick<AgentProvider, "type" | "config" | "model" | "name">;
 
 function normalized(value: unknown) {
-  return String(value ?? "").trim().toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 export function providerBillingMode(
@@ -34,8 +36,7 @@ export function providerBillingMode(
   if (backend === "free-claude") return "FREE";
 
   if (["free", "zero", "local"].includes(costClass)) return "FREE";
-  if (["plan", "quota", "subscription", "weekly", "time"].includes(costClass))
-    return "PLAN_QUOTA";
+  if (["plan", "quota", "subscription", "weekly", "time"].includes(costClass)) return "PLAN_QUOTA";
 
   // OpenRouter convention for explicitly free model variants.
   if (provider.type === "openrouter" && (model.endsWith(":free") || /\bfree\b/.test(name)))
@@ -44,8 +45,6 @@ export function providerBillingMode(
   return "METERED";
 }
 
-export function providerUsesMonetaryBudget(
-  provider: BillingProvider | null | undefined,
-) {
+export function providerUsesMonetaryBudget(provider: BillingProvider | null | undefined) {
   return providerBillingMode(provider) === "METERED";
 }

@@ -2,12 +2,7 @@
   "frameWidth": 16,
   "frameHeight": 32,
 
-  "directionOrder": [
-    "left",
-    "up",
-    "right",
-    "down"
-  ],
+  "directionOrder": ["left", "up", "right", "down"],
 
   "directionFrames": 6,
 

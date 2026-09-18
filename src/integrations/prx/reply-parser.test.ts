@@ -46,8 +46,7 @@ describe("parsePrxReplyCandidate", () => {
   });
 
   it("recovers the malformed envelope observed in ChatGPT Desktop", () => {
-    const inner =
-      '{"rationale":"Executar em duas etapas","tasks":[{"code":"T1"},{"code":"T2"}]}';
+    const inner = '{"rationale":"Executar em duas etapas","tasks":[{"code":"T1"},{"code":"T2"}]}';
 
     const raw =
       `{"requestId":"${expected.requestId}",` +
@@ -67,8 +66,7 @@ describe("parsePrxReplyCandidate", () => {
   });
 
   it("recovers the same malformed envelope when the UI prefixes ChatGPT disse:", () => {
-    const inner =
-      '{"rationale":"Plano","tasks":[{"code":"T1"}]}';
+    const inner = '{"rationale":"Plano","tasks":[{"code":"T1"}]}';
 
     const envelope =
       `{"requestId":"${expected.requestId}",` +
@@ -78,10 +76,7 @@ describe("parsePrxReplyCandidate", () => {
       `"messageId":"msg-4",` +
       `"text":"${inner}"}`;
 
-    const parsed = parsePrxReplyCandidate(
-      `ChatGPT disse:${envelope}`,
-      expected,
-    );
+    const parsed = parsePrxReplyCandidate(`ChatGPT disse:${envelope}`, expected);
 
     expect(parsed).not.toBeNull();
     expect(JSON.parse(parsed!.text as string).tasks).toHaveLength(1);

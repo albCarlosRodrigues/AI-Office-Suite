@@ -5,11 +5,7 @@ import {
   getToolDefinition,
 } from "@/permissions/tool-registry";
 import type { DurableApproval, DurableToolRequest } from "../durable/types";
-import type {
-  AuthorizationDecision,
-  AuthorizationSnapshot,
-  PolicyDecisionPoint,
-} from "./types";
+import type { AuthorizationDecision, AuthorizationSnapshot, PolicyDecisionPoint } from "./types";
 
 const ACTIVE_MISSION_STATUSES = new Set(["PLANNING", "RUNNING", "WAITING_APPROVAL", "REVIEWING"]);
 
@@ -80,14 +76,12 @@ export class LocalNextGenPdp implements PolicyDecisionPoint {
     const canonicalId = canonicalToolId(request.toolId);
     const definition = getToolDefinition(canonicalId);
 
-    if (!definition)
-      return decision(request, snapshot, "DENY", "UNKNOWN_TOOL", canonicalId);
+    if (!definition) return decision(request, snapshot, "DENY", "UNKNOWN_TOOL", canonicalId);
     if (snapshot.killSwitch)
       return decision(request, snapshot, "DENY", "KILL_SWITCH_ACTIVE", canonicalId);
     if (!snapshot.inputHashValid)
       return decision(request, snapshot, "DENY", "INPUT_HASH_MISMATCH", canonicalId);
-    if (!snapshot.agent)
-      return decision(request, snapshot, "DENY", "AGENT_NOT_FOUND", canonicalId);
+    if (!snapshot.agent) return decision(request, snapshot, "DENY", "AGENT_NOT_FOUND", canonicalId);
     if (snapshot.agent.suspended)
       return decision(request, snapshot, "DENY", "AGENT_SUSPENDED", canonicalId);
     if (!snapshot.mission)
@@ -107,7 +101,9 @@ export class LocalNextGenPdp implements PolicyDecisionPoint {
       return decision(request, snapshot, "DENY", "TOOL_NOT_ENABLED", canonicalId);
 
     const permissions = effectivePermissions(snapshot);
-    const missing = definition.requiredPermissions.filter((permission) => !permissions.has(permission));
+    const missing = definition.requiredPermissions.filter(
+      (permission) => !permissions.has(permission),
+    );
     if (missing.length > 0)
       return decision(
         request,

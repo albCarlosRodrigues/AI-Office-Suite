@@ -101,10 +101,7 @@ describe("permission-aware task routing", () => {
       permission(manager.id, "repository.read"),
       permission(manager.id, "shell.execute"),
     ];
-    const tools = [
-      tool(manager.id, "repository_read"),
-      tool(manager.id, "shell", false),
-    ];
+    const tools = [tool(manager.id, "repository_read"), tool(manager.id, "shell", false)];
     const task = { tools: ["repository_read", "shell"] };
 
     expect(missingTaskAccess(task, manager, permissions, tools, catalog)).toEqual({

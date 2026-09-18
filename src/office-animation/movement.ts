@@ -1,52 +1,25 @@
-import type {
-  AgentAnimationState,
-  Direction,
-  Point,
-} from "./types";
+import type { AgentAnimationState, Direction, Point } from "./types";
 
 const DEFAULT_SPEED = 0.085;
 
-function distance(
-  a: Point,
-  b: Point,
-): number {
-  return Math.hypot(
-    b.x - a.x,
-    b.y - a.y,
-  );
+function distance(a: Point, b: Point): number {
+  return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
-function getDirection(
-  from: Point,
-  to: Point,
-): Direction {
-  const dx =
-    to.x - from.x;
+function getDirection(from: Point, to: Point): Direction {
+  const dx = to.x - from.x;
 
-  const dy =
-    to.y - from.y;
+  const dy = to.y - from.y;
 
-  if (
-    Math.abs(dx) >
-    Math.abs(dy)
-  ) {
-    return dx >= 0
-      ? "right"
-      : "left";
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx >= 0 ? "right" : "left";
   }
 
-  return dy >= 0
-    ? "down"
-    : "up";
+  return dy >= 0 ? "down" : "up";
 }
 
-export function startRoute(
-  agent: AgentAnimationState,
-  route: Point[],
-): AgentAnimationState {
-  if (
-    route.length === 0
-  ) {
+export function startRoute(agent: AgentAnimationState, route: Point[]): AgentAnimationState {
+  if (route.length === 0) {
     return agent;
   }
 
@@ -56,10 +29,7 @@ export function startRoute(
    *
    * Portanto iniciamos no waypoint seguinte.
    */
-  const initialIndex =
-    route.length > 1
-      ? 1
-      : 0;
+  const initialIndex = route.length > 1 ? 1 : 0;
 
   return {
     ...agent,
@@ -68,8 +38,7 @@ export function startRoute(
 
     route,
 
-    routeIndex:
-      initialIndex,
+    routeIndex: initialIndex,
   };
 }
 
@@ -87,8 +56,7 @@ export function updateMovement(
   if (
     agent.activity !== "walking" ||
     agent.route.length === 0 ||
-    agent.routeIndex >=
-      agent.route.length
+    agent.routeIndex >= agent.route.length
   ) {
     return {
       agent,
@@ -101,10 +69,7 @@ export function updateMovement(
    * TypeScript considera route[index]
    * potencialmente undefined.
    */
-  const target =
-    agent.route[
-      agent.routeIndex
-    ];
+  const target = agent.route[agent.routeIndex];
 
   if (!target) {
     return {
@@ -113,8 +78,7 @@ export function updateMovement(
       agent: {
         ...agent,
 
-        routeIndex:
-          agent.route.length,
+        routeIndex: agent.route.length,
       },
     };
   }
@@ -124,31 +88,19 @@ export function updateMovement(
     y: agent.position.y,
   };
 
-  const d =
-    distance(
-      currentPosition,
-      target,
-    );
+  const d = distance(currentPosition, target);
 
-  const safeDelta =
-    Math.max(
-      deltaSeconds,
-      0,
-    );
+  const safeDelta = Math.max(deltaSeconds, 0);
 
-  const maxStep =
-    speed * safeDelta;
+  const maxStep = speed * safeDelta;
 
   /*
    * Ja esta exatamente no waypoint.
    */
   if (d === 0) {
-    const nextIndex =
-      agent.routeIndex + 1;
+    const nextIndex = agent.routeIndex + 1;
 
-    const arrived =
-      nextIndex >=
-      agent.route.length;
+    const arrived = nextIndex >= agent.route.length;
 
     return {
       arrived,
@@ -161,8 +113,7 @@ export function updateMovement(
           y: target.y,
         },
 
-        routeIndex:
-          nextIndex,
+        routeIndex: nextIndex,
       },
     };
   }
@@ -172,12 +123,9 @@ export function updateMovement(
    * completamente o waypoint.
    */
   if (d <= maxStep) {
-    const nextIndex =
-      agent.routeIndex + 1;
+    const nextIndex = agent.routeIndex + 1;
 
-    const arrived =
-      nextIndex >=
-      agent.route.length;
+    const arrived = nextIndex >= agent.route.length;
 
     return {
       arrived,
@@ -190,14 +138,9 @@ export function updateMovement(
           y: target.y,
         },
 
-        routeIndex:
-          nextIndex,
+        routeIndex: nextIndex,
 
-        direction:
-          getDirection(
-            currentPosition,
-            target,
-          ),
+        direction: getDirection(currentPosition, target),
       },
     };
   }
@@ -206,25 +149,12 @@ export function updateMovement(
    * Movimento parcial em direcao
    * ao waypoint atual.
    */
-  const ratio =
-    maxStep / d;
+  const ratio = maxStep / d;
 
   const nextPosition: Point = {
-    x:
-      currentPosition.x +
-      (
-        target.x -
-        currentPosition.x
-      ) *
-        ratio,
+    x: currentPosition.x + (target.x - currentPosition.x) * ratio,
 
-    y:
-      currentPosition.y +
-      (
-        target.y -
-        currentPosition.y
-      ) *
-        ratio,
+    y: currentPosition.y + (target.y - currentPosition.y) * ratio,
   };
 
   return {
@@ -233,14 +163,9 @@ export function updateMovement(
     agent: {
       ...agent,
 
-      direction:
-        getDirection(
-          currentPosition,
-          target,
-        ),
+      direction: getDirection(currentPosition, target),
 
-      position:
-        nextPosition,
+      position: nextPosition,
     },
   };
 }

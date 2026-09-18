@@ -1,34 +1,22 @@
-﻿import type {
-  AgentAnimationState,
-} from "./types";
+﻿import type { AgentAnimationState } from "./types";
 
-export function normalizedPositionStyle(
-  agent: AgentAnimationState,
-): React.CSSProperties {
+export function normalizedPositionStyle(agent: AgentAnimationState): React.CSSProperties {
   return {
     position: "absolute",
 
-    left:
-      `${agent.position.x * 100}%`,
+    left: `${agent.position.x * 100}%`,
 
-    top:
-      `${agent.position.y * 100}%`,
+    top: `${agent.position.y * 100}%`,
 
-    transform:
-      "translate(-50%, -50%)",
+    transform: "translate(-50%, -50%)",
 
     transition: "none",
 
-    zIndex:
-      Math.round(
-        agent.position.y * 1000,
-      ),
+    zIndex: Math.round(agent.position.y * 1000),
   };
 }
 
-export function animationName(
-  agent: AgentAnimationState,
-): string {
+export function animationName(agent: AgentAnimationState): string {
   if (agent.activity === "walking") {
     return `walk-${agent.direction}`;
   }
@@ -45,10 +33,7 @@ export function animationName(
     return "drink-coffee";
   }
 
-  if (
-    agent.activity === "sofa" ||
-    agent.activity === "armchair"
-  ) {
+  if (agent.activity === "sofa" || agent.activity === "armchair") {
     return "sit";
   }
 

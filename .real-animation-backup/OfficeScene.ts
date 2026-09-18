@@ -302,7 +302,12 @@ class AgentActor {
       this.sprite.setFrame(IDLE_FRAME[this.facing]);
       this.sprite.y = this.tile.y * TILE + TILE + bobY;
       this.bubble.setAlpha(visual.animation === "alert" ? 0.6 + 0.4 * Math.sin(time / 120) : 1);
-      if (this.status === "IDLE" && !this.testOverride && !this.scene.killSwitch && time > this.nextWanderCheck) {
+      if (
+        this.status === "IDLE" &&
+        !this.testOverride &&
+        !this.scene.killSwitch &&
+        time > this.nextWanderCheck
+      ) {
         this.nextWanderCheck = time + 12000 + Math.random() * 15000;
         if (this.wanderUntil && time > this.wanderUntil) {
           this.wanderUntil = 0;
@@ -325,13 +330,8 @@ class AgentActor {
   }
 
   onArrive() {
-    if (
-      this.testOverride &&
-      this.debugAction
-    ) {
-      this.scene.applyDebugArrivalPose(
-        this,
-      );
+    if (this.testOverride && this.debugAction) {
+      this.scene.applyDebugArrivalPose(this);
     }
     this.scene.tweens.add({
       targets: this.route,
@@ -607,11 +607,7 @@ export class OfficeScene extends Phaser.Scene {
           actor.homeFacing = seat.facing;
           if (!actor.testOverride && agent.status !== "MEETING") actor.moveTo(home);
         }
-        if (
-          !actor.testOverride &&
-          !actor.isReporting &&
-          previousStatus !== agent.status
-        )
+        if (!actor.testOverride && !actor.isReporting && previousStatus !== agent.status)
           this.applyStatus(actor, agent.status, false);
         else actor.applyStatusVisual();
       }
@@ -625,23 +621,11 @@ export class OfficeScene extends Phaser.Scene {
     }
   }
 
-  setAgentStatus(
-    agentId: string,
-    status: AgentStatus,
-  ) {
-    const actor =
-      this.actors.get(agentId);
+  setAgentStatus(agentId: string, status: AgentStatus) {
+    const actor = this.actors.get(agentId);
 
-    if (
-      actor &&
-      !actor.testOverride &&
-      actor.status !== status
-    ) {
-      this.applyStatus(
-        actor,
-        status,
-        false,
-      );
+    if (actor && !actor.testOverride && actor.status !== status) {
+      this.applyStatus(actor, status, false);
     }
   }
 
@@ -708,130 +692,82 @@ export class OfficeScene extends Phaser.Scene {
    * Nenhum destes comandos altera Supabase, tarefa, missao ou
    * estado real do agente.
    */
-  applyDebugArrivalPose(
-    actor: AgentActor,
-  ) {
-    switch (
-      actor.debugAction
-    ) {
+  applyDebugArrivalPose(actor: AgentActor) {
+    switch (actor.debugAction) {
       case "whiteboard":
-        actor.status =
-          "THINKING";
+        actor.status = "THINKING";
 
-        actor.facing =
-          DEBUG_SPOTS
-            .whiteboard
-            .facing;
+        actor.facing = DEBUG_SPOTS.whiteboard.facing;
 
         actor.applyStatusVisual();
 
-        actor.say(
-          "[TESTE] Pensando no quadro",
-          2600,
-        );
+        actor.say("[TESTE] Pensando no quadro", 2600);
 
         break;
 
       case "water":
-        actor.status =
-          "IDLE";
+        actor.status = "IDLE";
 
-        actor.facing =
-          DEBUG_SPOTS
-            .water
-            .facing;
+        actor.facing = DEBUG_SPOTS.water.facing;
 
         actor.applyStatusVisual();
 
-        actor.say(
-          "[TESTE] Bebendo água",
-          2300,
-        );
+        actor.say("[TESTE] Bebendo água", 2300);
 
         break;
 
       case "coffee":
-        actor.status =
-          "IDLE";
+        actor.status = "IDLE";
 
-        actor.facing =
-          DEBUG_SPOTS
-            .coffee
-            .facing;
+        actor.facing = DEBUG_SPOTS.coffee.facing;
 
         actor.applyStatusVisual();
 
-        actor.say(
-          "[TESTE] Bebendo café",
-          2300,
-        );
+        actor.say("[TESTE] Bebendo café", 2300);
 
         break;
 
       case "sofa":
-        actor.status =
-          "IDLE";
+        actor.status = "IDLE";
 
-        actor.facing =
-          DEBUG_SPOTS
-            .sofa
-            .facing;
+        actor.facing = DEBUG_SPOTS.sofa.facing;
 
-        actor.seated =
-          true;
+        actor.seated = true;
 
         actor.applyStatusVisual();
 
-        actor.say(
-          "[TESTE] Sofá",
-          2000,
-        );
+        actor.say("[TESTE] Sofá", 2000);
 
         break;
 
       case "armchair":
-        actor.status =
-          "IDLE";
+        actor.status = "IDLE";
 
-        actor.facing =
-          DEBUG_SPOTS
-            .armchair
-            .facing;
+        actor.facing = DEBUG_SPOTS.armchair.facing;
 
-        actor.seated =
-          true;
+        actor.seated = true;
 
         actor.applyStatusVisual();
 
-        actor.say(
-          "[TESTE] Poltrona",
-          2000,
-        );
+        actor.say("[TESTE] Poltrona", 2000);
 
         break;
 
       case "supervisor":
-        actor.status =
-          "IDLE";
+        actor.status = "IDLE";
 
         actor.applyStatusVisual();
 
-        actor.say(
-          "[TESTE] Informando o superior",
-          2600,
-        );
+        actor.say("[TESTE] Informando o superior", 2600);
 
         break;
 
       case "home":
-        actor.status =
-          "IDLE";
+        actor.status = "IDLE";
 
-        actor.facing =
-          actor.homeFacing;
+        actor.facing = actor.homeFacing;
 
-        actor.seated =
-          true;
+        actor.seated = true;
 
         actor.applyStatusVisual();
 
@@ -885,18 +821,12 @@ export class OfficeScene extends Phaser.Scene {
       actor.applyStatusVisual();
     };
 
-    const move = (
-      point: Point,
-      message: string,
-      status: AgentStatus = "IDLE",
-    ) => {
+    const move = (point: Point, message: string, status: AgentStatus = "IDLE") => {
       setVisualStatus(status);
 
       actor.say(`[TESTE] ${message}`, 2600);
 
-      actor.moveTo(
-        this.grid.nearestFree(point),
-      );
+      actor.moveTo(this.grid.nearestFree(point));
     };
 
     switch (action) {
@@ -945,43 +875,23 @@ export class OfficeScene extends Phaser.Scene {
        */
 
       case "whiteboard":
-        move(
-          { x: 3, y: 3 },
-          "Indo ao quadro",
-          "THINKING",
-        );
+        move({ x: 3, y: 3 }, "Indo ao quadro", "THINKING");
         return;
 
       case "water":
-        move(
-          { x: 2, y: 12 },
-          "Pegando água",
-          "IDLE",
-        );
+        move({ x: 2, y: 12 }, "Pegando água", "IDLE");
         return;
 
       case "coffee":
-        move(
-          { x: 3, y: 12 },
-          "Pegando café",
-          "IDLE",
-        );
+        move({ x: 3, y: 12 }, "Pegando café", "IDLE");
         return;
 
       case "sofa":
-        move(
-          { x: 4, y: 7 },
-          "Indo ao sofá",
-          "IDLE",
-        );
+        move({ x: 4, y: 7 }, "Indo ao sofá", "IDLE");
         return;
 
       case "armchair":
-        move(
-          { x: 14, y: 18 },
-          "Indo à poltrona",
-          "IDLE",
-        );
+        move({ x: 14, y: 18 }, "Indo à poltrona", "IDLE");
         return;
 
       case "home":
@@ -990,25 +900,14 @@ export class OfficeScene extends Phaser.Scene {
         return;
 
       case "talk":
-        actor.say(
-          "Teste de balão de fala e animação.",
-          4500,
-        );
+        actor.say("Teste de balão de fala e animação.", 4500);
         return;
 
       case "supervisor": {
-        const managerId =
-          actor.agent.manager_agent_id;
+        const managerId = actor.agent.manager_agent_id;
 
-        if (
-          managerId &&
-          this.actors.has(managerId)
-        ) {
-          this.reportToManager(
-            agentId,
-            managerId,
-            "[TESTE] Entregando resultado ao superior.",
-          );
+        if (managerId && this.actors.has(managerId)) {
+          this.reportToManager(agentId, managerId, "[TESTE] Entregando resultado ao superior.");
 
           return;
         }
@@ -1017,11 +916,7 @@ export class OfficeScene extends Phaser.Scene {
          * Fallback para agentes sem manager configurado:
          * aproxima-se da area executiva.
          */
-        move(
-          { x: 11, y: 8 },
-          "Indo ao superior",
-          "WALKING",
-        );
+        move({ x: 11, y: 8 }, "Indo ao superior", "WALKING");
 
         return;
       }

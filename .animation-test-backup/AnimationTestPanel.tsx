@@ -1,41 +1,23 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import type {
-  Agent,
-} from "@/types/domain";
+import type { Agent } from "@/types/domain";
 
-import {
-  officeBus,
-  type OfficeAnimationTestAction,
-} from "@/office/eventBus";
+import { officeBus, type OfficeAnimationTestAction } from "@/office/eventBus";
 
 interface Props {
   agents: Agent[];
 
-  selectedAgentId:
-    | string
-    | null;
+  selectedAgentId: string | null;
 
-  onSelectAgent: (
-    id: string | null,
-  ) => void;
+  onSelectAgent: (id: string | null) => void;
 }
 
 interface ActionDefinition {
-  action:
-    OfficeAnimationTestAction;
+  action: OfficeAnimationTestAction;
 
   label: string;
 
-  group:
-    | "state"
-    | "movement"
-    | "control";
+  group: "state" | "movement" | "control";
 }
 
 const ACTIONS: ActionDefinition[] = [
@@ -121,25 +103,12 @@ const ACTIONS: ActionDefinition[] = [
   },
 ];
 
-export function AnimationTestPanel({
-  agents,
-  selectedAgentId,
-  onSelectAgent,
-}: Props) {
-  const [open, setOpen] =
-    useState(true);
+export function AnimationTestPanel({ agents, selectedAgentId, onSelectAgent }: Props) {
+  const [open, setOpen] = useState(true);
 
-  const [
-    enabled,
-    setEnabled,
-  ] = useState(
-    import.meta.env.DEV,
-  );
+  const [enabled, setEnabled] = useState(import.meta.env.DEV);
 
-  const [
-    agentId,
-    setAgentId,
-  ] = useState("");
+  const [agentId, setAgentId] = useState("");
 
   /*
    * Em produção o painel pode ser aberto com:
@@ -147,23 +116,13 @@ export function AnimationTestPanel({
    * /office?animationTest=1
    */
   useEffect(() => {
-    if (
-      typeof window ===
-      "undefined"
-    ) {
+    if (typeof window === "undefined") {
       return;
     }
 
-    const params =
-      new URLSearchParams(
-        window.location.search,
-      );
+    const params = new URLSearchParams(window.location.search);
 
-    if (
-      params.get(
-        "animationTest",
-      ) === "1"
-    ) {
+    if (params.get("animationTest") === "1") {
       setEnabled(true);
     }
   }, []);
@@ -173,62 +132,30 @@ export function AnimationTestPanel({
    * com a seleção do escritório.
    */
   useEffect(() => {
-    if (
-      selectedAgentId &&
-      agents.some(
-        (agent) =>
-          agent.id ===
-          selectedAgentId,
-      )
-    ) {
-      setAgentId(
-        selectedAgentId,
-      );
+    if (selectedAgentId && agents.some((agent) => agent.id === selectedAgentId)) {
+      setAgentId(selectedAgentId);
 
       return;
     }
 
-    if (
-      agentId &&
-      agents.some(
-        (agent) =>
-          agent.id === agentId,
-      )
-    ) {
+    if (agentId && agents.some((agent) => agent.id === agentId)) {
       return;
     }
 
-    setAgentId(
-      agents[0]?.id ?? "",
-    );
-  }, [
-    agents,
-    agentId,
-    selectedAgentId,
-  ]);
+    setAgentId(agents[0]?.id ?? "");
+  }, [agents, agentId, selectedAgentId]);
 
-  const selectedAgent =
-    useMemo(
-      () =>
-        agents.find(
-          (agent) =>
-            agent.id === agentId,
-        ) ?? null,
+  const selectedAgent = useMemo(
+    () => agents.find((agent) => agent.id === agentId) ?? null,
 
-      [
-        agents,
-        agentId,
-      ],
-    );
+    [agents, agentId],
+  );
 
   if (!enabled) {
     return null;
   }
 
-  const run = (
-    action:
-      OfficeAnimationTestAction,
-  ) => {
+  const run = (action: OfficeAnimationTestAction) => {
     if (!agentId) {
       return;
     }
@@ -251,9 +178,7 @@ export function AnimationTestPanel({
     return (
       <button
         type="button"
-        onClick={() =>
-          setOpen(true)
-        }
+        onClick={() => setOpen(true)}
         className="
           absolute
           right-3
@@ -280,26 +205,11 @@ export function AnimationTestPanel({
     );
   }
 
-  const stateActions =
-    ACTIONS.filter(
-      (item) =>
-        item.group ===
-        "state",
-    );
+  const stateActions = ACTIONS.filter((item) => item.group === "state");
 
-  const movementActions =
-    ACTIONS.filter(
-      (item) =>
-        item.group ===
-        "movement",
-    );
+  const movementActions = ACTIONS.filter((item) => item.group === "movement");
 
-  const controlActions =
-    ACTIONS.filter(
-      (item) =>
-        item.group ===
-        "control",
-    );
+  const controlActions = ACTIONS.filter((item) => item.group === "control");
 
   return (
     <div
@@ -358,9 +268,7 @@ export function AnimationTestPanel({
         <button
           type="button"
           title="Minimizar"
-          onClick={() =>
-            setOpen(false)
-          }
+          onClick={() => setOpen(false)}
           className="
             rounded
             px-2
@@ -400,17 +308,12 @@ export function AnimationTestPanel({
 
           <select
             value={agentId}
-            onChange={(
-              event,
-            ) => {
-              const id =
-                event.target.value;
+            onChange={(event) => {
+              const id = event.target.value;
 
               setAgentId(id);
 
-              onSelectAgent(
-                id || null,
-              );
+              onSelectAgent(id || null);
             }}
             className="
               h-8
@@ -426,27 +329,13 @@ export function AnimationTestPanel({
               focus:border-primary/60
             "
           >
-            {agents.length ===
-              0 && (
-              <option value="">
-                Nenhum agente
-              </option>
-            )}
+            {agents.length === 0 && <option value="">Nenhum agente</option>}
 
-            {agents.map(
-              (agent) => (
-                <option
-                  key={
-                    agent.id
-                  }
-                  value={
-                    agent.id
-                  }
-                >
-                  {agent.name}
-                </option>
-              ),
-            )}
+            {agents.map((agent) => (
+              <option key={agent.id} value={agent.id}>
+                {agent.name}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -478,9 +367,7 @@ export function AnimationTestPanel({
                   font-medium
                 "
               >
-                {
-                  selectedAgent.name
-                }
+                {selectedAgent.name}
               </span>
 
               <span
@@ -491,9 +378,7 @@ export function AnimationTestPanel({
                   text-primary
                 "
               >
-                {
-                  selectedAgent.status
-                }
+                {selectedAgent.status}
               </span>
             </div>
 
@@ -504,85 +389,39 @@ export function AnimationTestPanel({
                 text-muted-foreground
               "
             >
-              {
-                selectedAgent.role
-              }
+              {selectedAgent.role}
             </p>
           </div>
         )}
 
         {/* ESTADOS */}
 
-        <Section
-          title="Estado"
-        >
-          {stateActions.map(
-            (item) => (
-              <TestButton
-                key={
-                  item.action
-                }
-                label={
-                  item.label
-                }
-                onClick={() =>
-                  run(
-                    item.action,
-                  )
-                }
-              />
-            ),
-          )}
+        <Section title="Estado">
+          {stateActions.map((item) => (
+            <TestButton key={item.action} label={item.label} onClick={() => run(item.action)} />
+          ))}
         </Section>
 
         {/* MOVIMENTOS */}
 
-        <Section
-          title="Movimento"
-        >
-          {movementActions.map(
-            (item) => (
-              <TestButton
-                key={
-                  item.action
-                }
-                label={
-                  item.label
-                }
-                onClick={() =>
-                  run(
-                    item.action,
-                  )
-                }
-              />
-            ),
-          )}
+        <Section title="Movimento">
+          {movementActions.map((item) => (
+            <TestButton key={item.action} label={item.label} onClick={() => run(item.action)} />
+          ))}
         </Section>
 
         {/* CONTROLES */}
 
-        <Section
-          title="Controle"
-        >
-          {controlActions.map(
-            (item) => (
-              <button
-                key={
-                  item.action
-                }
-                type="button"
-                disabled={
-                  !agentId
-                }
-                onClick={() =>
-                  run(
-                    item.action,
-                  )
-                }
-                className={
-                  item.action ===
-                  "reset"
-                    ? `
+        <Section title="Controle">
+          {controlActions.map((item) => (
+            <button
+              key={item.action}
+              type="button"
+              disabled={!agentId}
+              onClick={() => run(item.action)}
+              className={
+                item.action === "reset"
+                  ? `
                       h-8
                       rounded-md
                       border
@@ -594,7 +433,7 @@ export function AnimationTestPanel({
                       text-destructive
                       hover:bg-destructive/10
                     `
-                    : `
+                  : `
                       h-8
                       rounded-md
                       border
@@ -608,14 +447,11 @@ export function AnimationTestPanel({
                       hover:bg-accent
                       hover:text-foreground
                     `
-                }
-              >
-                {
-                  item.label
-                }
-              </button>
-            ),
-          )}
+              }
+            >
+              {item.label}
+            </button>
+          ))}
         </Section>
 
         <p
@@ -628,10 +464,7 @@ export function AnimationTestPanel({
             text-muted-foreground
           "
         >
-          Os comandos deste
-          painel não devem
-          alterar o estado
-          persistido do agente.
+          Os comandos deste painel não devem alterar o estado persistido do agente.
         </p>
       </div>
     </div>

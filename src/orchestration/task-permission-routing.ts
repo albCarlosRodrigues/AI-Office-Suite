@@ -1,11 +1,6 @@
 import type { Agent, AgentPermission } from "@/types/domain";
 import type { PlannedTask } from "./providers/types";
-import {
-  TOOL_MAP,
-  canonicalToolId,
-  expandEnabledToolIds,
-  isKnownTool,
-} from "./tools/catalog";
+import { TOOL_MAP, canonicalToolId, expandEnabledToolIds, isKnownTool } from "./tools/catalog";
 
 type ToolDefinitionLike = { requiredPermissions: readonly string[] };
 type ToolCatalogLike = Record<string, ToolDefinitionLike | undefined>;
@@ -58,10 +53,12 @@ export function enabledToolsForAgent(
 
   // Migration compatibility: local legacy rows can still contain agents.allowed_tools.
   // Unlike the previous behavior, an empty capability list no longer grants every tool.
-  const legacyAllowed = Array.isArray((agent as unknown as { allowed_tools?: unknown }).allowed_tools)
-    ? ((agent as unknown as { allowed_tools: unknown[] }).allowed_tools.filter(
+  const legacyAllowed = Array.isArray(
+    (agent as unknown as { allowed_tools?: unknown }).allowed_tools,
+  )
+    ? (agent as unknown as { allowed_tools: unknown[] }).allowed_tools.filter(
         (item): item is string => typeof item === "string",
-      ))
+      )
     : [];
   const capabilities = agent.capabilities ?? [];
   const base = legacyAllowed.length > 0 ? legacyAllowed : capabilities.filter(isKnownTool);

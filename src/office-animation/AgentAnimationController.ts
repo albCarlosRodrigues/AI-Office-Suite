@@ -1,6 +1,4 @@
-﻿import {
-  officeResources,
-} from "./OfficeResourceManager";
+﻿import { officeResources } from "./OfficeResourceManager";
 
 import {
   routeBack,
@@ -12,17 +10,9 @@ import {
   routeToWhiteboard,
 } from "./officeRoutes";
 
-import {
-  startRoute,
-  updateMovement,
-} from "./movement";
+import { startRoute, updateMovement } from "./movement";
 
-import type {
-  AgentAnimationState,
-  AgentBusinessState,
-  OfficeResource,
-  Point,
-} from "./types";
+import type { AgentAnimationState, AgentBusinessState, OfficeResource, Point } from "./types";
 
 /*
  * Regras solicitadas:
@@ -62,37 +52,17 @@ const IDLE_MAX_DELAY = 16_000;
 const ACTIVITY_MIN_DURATION = 4_000;
 const ACTIVITY_MAX_DURATION = 8_000;
 
-function randomBetween(
-  min: number,
-  max: number,
-): number {
-  return (
-    min +
-    Math.random() *
-      (max - min)
-  );
+function randomBetween(min: number, max: number): number {
+  return min + Math.random() * (max - min);
 }
 
-function nextIdleDecision(
-  now: number,
-): number {
-  return (
-    now +
-    randomBetween(
-      IDLE_MIN_DELAY,
-      IDLE_MAX_DELAY,
-    )
-  );
+function nextIdleDecision(now: number): number {
+  return now + randomBetween(IDLE_MIN_DELAY, IDLE_MAX_DELAY);
 }
 
-function releaseTarget(
-  agent: AgentAnimationState,
-): void {
+function releaseTarget(agent: AgentAnimationState): void {
   if (agent.target) {
-    officeResources.release(
-      agent.target,
-      agent.agentId,
-    );
+    officeResources.release(agent.target, agent.agentId);
   }
 }
 
@@ -101,12 +71,7 @@ function beginResourceAction(
   resource: OfficeResource,
   route: Point[],
 ): AgentAnimationState {
-  if (
-    !officeResources.acquire(
-      resource,
-      agent.agentId,
-    )
-  ) {
+  if (!officeResources.acquire(resource, agent.agentId)) {
     return agent;
   }
 
@@ -119,59 +84,32 @@ function beginResourceAction(
   );
 }
 
-function chooseIdleActivity(
-  agent: AgentAnimationState,
-): AgentAnimationState {
-  const actions: OfficeResource[] = [
-    "water",
-    "coffee",
-    "sofa",
-    "armchair",
-  ];
+function chooseIdleActivity(agent: AgentAnimationState): AgentAnimationState {
+  const actions: OfficeResource[] = ["water", "coffee", "sofa", "armchair"];
 
   /*
    * Embaralha para que varios funcionarios
    * nao priorizem sempre o mesmo recurso.
    */
-  actions.sort(
-    () => Math.random() - 0.5,
-  );
+  actions.sort(() => Math.random() - 0.5);
 
   for (const action of actions) {
-    if (
-      !officeResources.isAvailable(action)
-    ) {
+    if (!officeResources.isAvailable(action)) {
       continue;
     }
 
     switch (action) {
       case "water":
-        return beginResourceAction(
-          agent,
-          "water",
-          routeToWater(agent.position),
-        );
+        return beginResourceAction(agent, "water", routeToWater(agent.position));
 
       case "coffee":
-        return beginResourceAction(
-          agent,
-          "coffee",
-          routeToCoffee(agent.position),
-        );
+        return beginResourceAction(agent, "coffee", routeToCoffee(agent.position));
 
       case "sofa":
-        return beginResourceAction(
-          agent,
-          "sofa",
-          routeToSofa(agent.position),
-        );
+        return beginResourceAction(agent, "sofa", routeToSofa(agent.position));
 
       case "armchair":
-        return beginResourceAction(
-          agent,
-          "armchair",
-          routeToArmchair(agent.position),
-        );
+        return beginResourceAction(agent, "armchair", routeToArmchair(agent.position));
     }
   }
 
@@ -205,13 +143,9 @@ export function createAgentAnimationState(
 
     direction: "up",
 
-    thinkingSince:
-      businessState === "thinking"
-        ? now
-        : undefined,
+    thinkingSince: businessState === "thinking" ? now : undefined,
 
-    nextIdleDecisionAt:
-      nextIdleDecision(now),
+    nextIdleDecisionAt: nextIdleDecision(now),
 
     reportingRequired: false,
   };
@@ -222,26 +156,20 @@ export function setBusinessState(
   newState: AgentBusinessState,
   now = Date.now(),
 ): AgentAnimationState {
-  const previous =
-    agent.businessState;
+  const previous = agent.businessState;
 
   /*
    * Tarefa que estava ativa e terminou.
    */
   const taskFinished =
-    (previous === "working" ||
-      previous === "thinking") &&
-    (newState === "completed" ||
-      newState === "idle");
+    (previous === "working" || previous === "thinking") &&
+    (newState === "completed" || newState === "idle");
 
   /*
    * Uma mudanca real de trabalho interrompe
    * cafe/agua/descanso.
    */
-  if (
-    newState === "working" ||
-    newState === "thinking"
-  ) {
+  if (newState === "working" || newState === "thinking") {
     releaseTarget(agent);
 
     const reset: AgentAnimationState = {
@@ -261,29 +189,15 @@ export function setBusinessState(
 
       reportingRequired: false,
 
-      thinkingSince:
-        newState === "thinking"
-          ? now
-          : undefined,
+      thinkingSince: newState === "thinking" ? now : undefined,
     };
 
     /*
      * Se estava longe da mesa,
      * primeiro retorna.
      */
-    if (
-      reset.position.x !==
-        reset.homePosition.x ||
-      reset.position.y !==
-        reset.homePosition.y
-    ) {
-      return startRoute(
-        reset,
-        routeBack(
-          reset.position,
-          reset.homePosition,
-        ),
-      );
+    if (reset.position.x !== reset.homePosition.x || reset.position.y !== reset.homePosition.y) {
+      return startRoute(reset, routeBack(reset.position, reset.homePosition));
     }
 
     return reset;
@@ -294,14 +208,9 @@ export function setBusinessState(
 
     businessState: newState,
 
-    reportingRequired:
-      taskFinished ||
-      agent.reportingRequired,
+    reportingRequired: taskFinished || agent.reportingRequired,
 
-    thinkingSince:
-      newState === "thinking"
-        ? agent.thinkingSince ?? now
-        : undefined,
+    thinkingSince: newState === "thinking" ? (agent.thinkingSince ?? now) : undefined,
   };
 }
 
@@ -316,28 +225,17 @@ export function updateAgentAnimation(
    * Prioridade maxima:
    * informar superior ao concluir tarefa.
    */
-  if (
-    agent.reportingRequired &&
-    agent.activity !== "walking" &&
-    agent.activity !== "reporting"
-  ) {
+  if (agent.reportingRequired && agent.activity !== "walking" && agent.activity !== "reporting") {
     releaseTarget(agent);
 
-    if (
-      officeResources.acquire(
-        "supervisor",
-        agent.agentId,
-      )
-    ) {
+    if (officeResources.acquire("supervisor", agent.agentId)) {
       return startRoute(
         {
           ...agent,
 
           target: "supervisor",
         },
-        routeToSupervisor(
-          agent.position,
-        ),
+        routeToSupervisor(agent.position),
       );
     }
   }
@@ -346,14 +244,9 @@ export function updateAgentAnimation(
    * Movimento atual.
    */
   if (agent.activity === "walking") {
-    const movement =
-      updateMovement(
-        agent,
-        deltaSeconds,
-      );
+    const movement = updateMovement(agent, deltaSeconds);
 
-    agent =
-      movement.agent;
+    agent = movement.agent;
 
     if (!movement.arrived) {
       return agent;
@@ -368,8 +261,7 @@ export function updateAgentAnimation(
 
         activity: "reporting",
 
-        activityUntil:
-          now + 2500,
+        activityUntil: now + 2500,
 
         direction: "up",
       };
@@ -391,12 +283,7 @@ export function updateAgentAnimation(
 
         activity: "water",
 
-        activityUntil:
-          now +
-          randomBetween(
-            ACTIVITY_MIN_DURATION,
-            ACTIVITY_MAX_DURATION,
-          ),
+        activityUntil: now + randomBetween(ACTIVITY_MIN_DURATION, ACTIVITY_MAX_DURATION),
       };
     }
 
@@ -406,12 +293,7 @@ export function updateAgentAnimation(
 
         activity: "coffee",
 
-        activityUntil:
-          now +
-          randomBetween(
-            ACTIVITY_MIN_DURATION,
-            ACTIVITY_MAX_DURATION,
-          ),
+        activityUntil: now + randomBetween(ACTIVITY_MIN_DURATION, ACTIVITY_MAX_DURATION),
       };
     }
 
@@ -421,12 +303,7 @@ export function updateAgentAnimation(
 
         activity: "sofa",
 
-        activityUntil:
-          now +
-          randomBetween(
-            ACTIVITY_MIN_DURATION,
-            ACTIVITY_MAX_DURATION,
-          ),
+        activityUntil: now + randomBetween(ACTIVITY_MIN_DURATION, ACTIVITY_MAX_DURATION),
       };
     }
 
@@ -436,12 +313,7 @@ export function updateAgentAnimation(
 
         activity: "armchair",
 
-        activityUntil:
-          now +
-          randomBetween(
-            ACTIVITY_MIN_DURATION,
-            ACTIVITY_MAX_DURATION,
-          ),
+        activityUntil: now + randomBetween(ACTIVITY_MIN_DURATION, ACTIVITY_MAX_DURATION),
       };
     }
 
@@ -464,15 +336,8 @@ export function updateAgentAnimation(
   /*
    * Terminou de informar o superior.
    */
-  if (
-    agent.activity === "reporting" &&
-    agent.activityUntil &&
-    now >= agent.activityUntil
-  ) {
-    officeResources.release(
-      "supervisor",
-      agent.agentId,
-    );
+  if (agent.activity === "reporting" && agent.activityUntil && now >= agent.activityUntil) {
+    officeResources.release("supervisor", agent.agentId);
 
     return startRoute(
       {
@@ -484,10 +349,7 @@ export function updateAgentAnimation(
 
         activityUntil: undefined,
       },
-      routeBack(
-        agent.position,
-        agent.homePosition,
-      ),
+      routeBack(agent.position, agent.homePosition),
     );
   }
 
@@ -495,43 +357,29 @@ export function updateAgentAnimation(
    * THINKING.
    */
   if (agent.businessState === "thinking") {
-    const thinkingSince =
-      agent.thinkingSince ?? now;
+    const thinkingSince = agent.thinkingSince ?? now;
 
     /*
      * Ja esta pensando no quadro:
      * permanece ali ate o estado real mudar.
      */
-    if (
-      agent.activity === "whiteboard"
-    ) {
+    if (agent.activity === "whiteboard") {
       return {
         ...agent,
         thinkingSince,
       };
     }
 
-    const delay =
-      randomBetween(
-        MIN_THINKING_TO_BOARD,
-        MAX_THINKING_TO_BOARD,
-      );
+    const delay = randomBetween(MIN_THINKING_TO_BOARD, MAX_THINKING_TO_BOARD);
 
-    if (
-      now - thinkingSince >= delay &&
-      officeResources.isAvailable(
-        "whiteboard",
-      )
-    ) {
+    if (now - thinkingSince >= delay && officeResources.isAvailable("whiteboard")) {
       return beginResourceAction(
         {
           ...agent,
           thinkingSince,
         },
         "whiteboard",
-        routeToWhiteboard(
-          agent.position,
-        ),
+        routeToWhiteboard(agent.position),
       );
     }
 
@@ -571,10 +419,7 @@ export function updateAgentAnimation(
     /*
      * Acabou cafe/agua/sofa/poltrona.
      */
-    if (
-      agent.activityUntil &&
-      now >= agent.activityUntil
-    ) {
+    if (agent.activityUntil && now >= agent.activityUntil) {
       releaseTarget(agent);
 
       return startRoute(
@@ -585,13 +430,9 @@ export function updateAgentAnimation(
 
           activityUntil: undefined,
 
-          nextIdleDecisionAt:
-            nextIdleDecision(now),
+          nextIdleDecisionAt: nextIdleDecision(now),
         },
-        routeBack(
-          agent.position,
-          agent.homePosition,
-        ),
+        routeBack(agent.position, agent.homePosition),
       );
     }
 
@@ -599,25 +440,18 @@ export function updateAgentAnimation(
      * Nao escolhe outra atividade
      * enquanto ja estiver usando uma.
      */
-    if (
-      agent.activity !== "desk"
-    ) {
+    if (agent.activity !== "desk") {
       return agent;
     }
 
-    if (
-      now >=
-      agent.nextIdleDecisionAt
-    ) {
-      const chosen =
-        chooseIdleActivity(agent);
+    if (now >= agent.nextIdleDecisionAt) {
+      const chosen = chooseIdleActivity(agent);
 
       if (chosen === agent) {
         return {
           ...agent,
 
-          nextIdleDecisionAt:
-            nextIdleDecision(now),
+          nextIdleDecisionAt: nextIdleDecision(now),
         };
       }
 

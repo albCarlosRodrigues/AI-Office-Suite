@@ -1,9 +1,4 @@
-import type {
-  Agent,
-  AgentStatus,
-  MissionEvent,
-  Meeting,
-} from "@/types/domain";
+import type { Agent, AgentStatus, MissionEvent, Meeting } from "@/types/domain";
 
 export type OfficeAnimationTestAction =
   | "idle"
@@ -70,29 +65,22 @@ export type OfficeEvent =
       agentId: string | null;
     };
 
-type Listener =
-  (event: OfficeEvent) => void;
+type Listener = (event: OfficeEvent) => void;
 
 class EventBus {
-  private listeners =
-    new Set<Listener>();
+  private listeners = new Set<Listener>();
 
   on(fn: Listener) {
     this.listeners.add(fn);
 
-    return () =>
-      this.listeners.delete(fn);
+    return () => this.listeners.delete(fn);
   }
 
   emit(event: OfficeEvent) {
-    for (
-      const listener
-      of this.listeners
-    ) {
+    for (const listener of this.listeners) {
       listener(event);
     }
   }
 }
 
-export const officeBus =
-  new EventBus();
+export const officeBus = new EventBus();
